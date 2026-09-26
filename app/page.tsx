@@ -1,69 +1,65 @@
-import Image from "next/image";
+import { Zap } from "lucide-react";
+import PortfolioCarousel from "@/components/ui/PortfolioCarousel";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <div className="relative flex flex-1 flex-col items-center overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-cyan/5 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-[400px] w-[600px] translate-x-1/4 translate-y-1/4 rounded-full bg-accent-blue/5 blur-3xl" />
+      </div>
+
+      {/* ========== HERO SECTION ========== */}
+      <section className="relative z-10 flex flex-col items-center gap-6 px-4 py-24 text-center sm:px-8">
+        <div className="glass-effect flex flex-col items-center gap-6 rounded-2xl px-8 py-12 sm:px-16 sm:py-16">
+          {/* Icon */}
+          <div className="animate-pulse-glow flex h-16 w-16 items-center justify-center rounded-2xl bg-accent-cyan/10 text-accent-cyan">
+            <Zap className="h-8 w-8" />
+          </div>
+
+          {/* Title */}
+          <h1 className="text-glow text-3xl font-bold tracking-tight text-text-primary sm:text-4xl lg:text-5xl">
+            Wuthering Waves
+            <br />
+            <span className="bg-gradient-to-r from-accent-cyan to-accent-blue bg-clip-text text-transparent">
+              Boosting Service
+            </span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+
+          {/* Divider */}
+          <div className="divider-glow w-48" />
+
+          {/* Status */}
+          <div className="flex items-center gap-2 rounded-full border border-accent-cyan/20 bg-accent-cyan/5 px-4 py-2 text-sm font-mono text-accent-cyan">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-cyan opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-accent-cyan" />
+            </span>
+            System Initialized
+          </div>
+
+          <p className="max-w-md text-text-secondary">
+            Layanan boost akun Wuthering Waves profesional, cepat, dan terpercaya.
+            Raih pencapaian tertinggi tanpa ribet.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </section>
+
+      {/* ========== PORTFOLIO CAROUSEL ========== */}
+      <section className="relative z-10 w-full max-w-7xl px-4 pb-16 sm:px-8">
+        <PortfolioCarousel />
+      </section>
+
+      {/* ========== CTA BUTTON ========== */}
+      <section className="relative z-10 pb-24">
+        <a
+          href="/dashboard"
+          className="inline-flex items-center gap-2 rounded-full border border-accent-cyan/30 bg-accent-cyan/10 px-8 py-3 text-sm font-semibold text-accent-cyan transition-colors hover:bg-accent-cyan/20 active:bg-accent-cyan/25"
+        >
+          Lihat Katalog Jasa
+        </a>
+      </section>
     </div>
   );
 }
