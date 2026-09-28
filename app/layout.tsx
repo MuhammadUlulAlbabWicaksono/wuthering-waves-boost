@@ -27,21 +27,30 @@ export const metadata: Metadata = {
   ],
 };
 
+import { CartProvider } from "@/context/CartContext";
+import { Providers } from "@/components/Providers";
+import { Toaster } from "react-hot-toast";
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="id"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-bg-primary text-text-primary">
-        {/* Navbar */}
-        <Navbar />
+      <body className="flex min-h-full flex-col bg-bg-primary text-slate-100">
+        <Providers>
+          <CartProvider>
+            {/* Navbar */}
+            <Navbar />
+            <Toaster position="top-center" />
 
-        {/* Main Content */}
-        <main className="flex-1">{children}</main>
+            {/* Main Content */}
+            <main className="flex-1 pb-24">{children}</main>
 
-        {/* Footer */}
-        <Footer />
+            {/* Footer */}
+            <Footer />
+          </CartProvider>
+        </Providers>
       </body>
     </html>
   );

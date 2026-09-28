@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
-import { Plus, X, User, Shield, Swords, Zap, Sparkles, Check, MousePointerClick, Skull, CreditCard, Smartphone, QrCode } from "lucide-react";
+import { useState, useCallback, useMemo, Suspense } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import Image from "next/image";
+import { Plus, X, User, Shield, Swords, Zap, Sparkles, Check, MousePointerClick, Skull, ShoppingCart, CreditCard, AlertTriangle, ChevronDown } from "lucide-react";
+import toast from "react-hot-toast";
 
 /* ─────────────────────────────────────
    TYPES & DATA
@@ -11,7 +14,9 @@ interface Character {
   id: string;
   name: string;
   tier: string;
-  imageUrl: string;
+  sonata: string;
+  rarity: number;
+  image?: string;
 }
 
 type SlotValue = Character | null;
@@ -25,10 +30,10 @@ const modes = ["ToA", "Whiwa", "Matrix", "Hologram"] as const;
 type Mode = (typeof modes)[number];
 
 const MODE_ICONS: Record<Mode, React.ReactNode> = {
-  ToA: <Swords className="h-4 w-4" />,
-  Whiwa: <Shield className="h-4 w-4" />,
-  Matrix: <Zap className="h-4 w-4" />,
-  Hologram: <Sparkles className="h-4 w-4" />,
+  ToA: <img src="/icons/ui%20icon/toa.webp" alt="ToA" className="h-5 w-5 object-contain" />,
+  Whiwa: <img src="/icons/ui%20icon/whiwa.webp" alt="Whiwa" className="h-5 w-5 object-contain" />,
+  Matrix: <img src="/icons/ui%20icon/matrix.webp" alt="Matrix" className="h-5 w-5 object-contain" />,
+  Hologram: <img src="/icons/ui%20icon/tactical-hologram.webp" alt="Hologram" className="h-5 w-5 object-contain" />,
 };
 
 const DEFAULT_ROWS: Record<Mode, number> = {
@@ -46,23 +51,75 @@ const VIGOR_CONFIG: Record<Mode, { max: number; cost: number }> = {
 };
 
 const characters: Character[] = [
-  { id: "jinhsi", name: "Jinhsi", tier: "S", imageUrl: "" },
-  { id: "changli", name: "Changli", tier: "S", imageUrl: "" },
-  { id: "zhezhi", name: "Zhezhi", tier: "S", imageUrl: "" },
-  { id: "xiangli-yao", name: "Xiangli Yao", tier: "S", imageUrl: "" },
-  { id: "shorekeeper", name: "Shorekeeper", tier: "S", imageUrl: "" },
-  { id: "camellya", name: "Camellya", tier: "S", imageUrl: "" },
-  { id: "roccia", name: "Roccia", tier: "A", imageUrl: "" },
-  { id: "carlotta", name: "Carlotta", tier: "S", imageUrl: "" },
-  { id: "phoebe", name: "Phoebe", tier: "S", imageUrl: "" },
-  { id: "brant", name: "Brant", tier: "S", imageUrl: "" },
-  { id: "cantarella", name: "Cantarella", tier: "S", imageUrl: "" },
-  { id: "zani", name: "Zani", tier: "S", imageUrl: "" },
-  { id: "verina", name: "Verina", tier: "S", imageUrl: "" },
-  { id: "sanhua", name: "Sanhua", tier: "A", imageUrl: "" },
-  { id: "encore", name: "Encore", tier: "S", imageUrl: "" },
-  { id: "yinlin", name: "Yinlin", tier: "S", imageUrl: "" },
-];
+  { id: "buling", name: "Buling", sonata: "Electro", rarity: 4, tier: "A" },
+  { id: "lumi", name: "Lumi", sonata: "Electro", rarity: 4, tier: "A" },
+  { id: "yuanwu", name: "Yuanwu", sonata: "Electro", rarity: 4, tier: "A" },
+  { id: "augusta", name: "Augusta", sonata: "Electro", rarity: 5, tier: "S" },
+  { id: "calcharo", name: "Calcharo", sonata: "Electro", rarity: 5, tier: "S" },
+  { id: "hsin", name: "Hsin", sonata: "Electro", rarity: 5, tier: "S" },
+  { id: "rebecca", name: "Rebecca", sonata: "Electro", rarity: 5, tier: "S" },
+  { id: "rover-electro", name: "Rover (Electro)", sonata: "Electro", rarity: 5, tier: "S" },
+  { id: "suoming", name: "Suoming", sonata: "Electro", rarity: 5, tier: "S" },
+  { id: "xiangli-yao", name: "Xiangli Yao", sonata: "Electro", rarity: 5, tier: "S" },
+  { id: "yinlin", name: "Yinlin", sonata: "Electro", rarity: 5, tier: "S" },
+
+  { id: "danjin", name: "Danjin", sonata: "Havoc", rarity: 4, tier: "A" },
+  { id: "taoqi", name: "Taoqi", sonata: "Havoc", rarity: 4, tier: "A" },
+  { id: "camellya", name: "Camellya", sonata: "Havoc", rarity: 5, tier: "S" },
+  { id: "cantarella", name: "Cantarella", sonata: "Havoc", rarity: 5, tier: "S" },
+  { id: "chisa", name: "Chisa", sonata: "Havoc", rarity: 5, tier: "S" },
+  { id: "phrolova", name: "Phrolova", sonata: "Havoc", rarity: 5, tier: "S" },
+  { id: "roccia", name: "Roccia", sonata: "Havoc", rarity: 5, tier: "S" },
+  { id: "rover-havoc", name: "Rover (Havoc)", sonata: "Havoc", rarity: 5, tier: "S" },
+  { id: "yangyang-xuanling", name: "Yangyang Xuanling", sonata: "Havoc", rarity: 5, tier: "S" },
+
+  { id: "jinhsi", name: "Jinhsi", sonata: "Spectro", rarity: 5, tier: "S" },
+  { id: "lucy", name: "Lucy", sonata: "Spectro", rarity: 5, tier: "S" },
+  { id: "luuk-herssen", name: "Luuk Herssen", sonata: "Spectro", rarity: 5, tier: "S" },
+  { id: "lynae", name: "Lynae", sonata: "Spectro", rarity: 5, tier: "S" },
+  { id: "phoebe", name: "Phoebe", sonata: "Spectro", rarity: 5, tier: "S" },
+  { id: "rover-spectro", name: "Rover (Spectro)", sonata: "Spectro", rarity: 5, tier: "S" },
+  { id: "shorekeeper", name: "The Shorekeeper", sonata: "Spectro", rarity: 5, tier: "S" },
+  { id: "verina", name: "Verina", sonata: "Spectro", rarity: 5, tier: "S" },
+  { id: "zani", name: "Zani", sonata: "Spectro", rarity: 5, tier: "S" },
+
+  { id: "chixia", name: "Chixia", sonata: "Fusion", rarity: 4, tier: "A" },
+  { id: "mortefi", name: "Mortefi", sonata: "Fusion", rarity: 4, tier: "A" },
+  { id: "aemeath", name: "Aemeath", sonata: "Fusion", rarity: 5, tier: "S" },
+  { id: "brant", name: "Brant", sonata: "Fusion", rarity: 5, tier: "S" },
+  { id: "changli", name: "Changli", sonata: "Fusion", rarity: 5, tier: "S" },
+  { id: "denia", name: "Denia", sonata: "Fusion", rarity: 5, tier: "S" },
+  { id: "encore", name: "Encore", sonata: "Fusion", rarity: 5, tier: "S" },
+  { id: "galbrena", name: "Galbrena", sonata: "Fusion", rarity: 5, tier: "S" },
+  { id: "jingran", name: "Jingran", sonata: "Fusion", rarity: 5, tier: "S" },
+  { id: "lupa", name: "Lupa", sonata: "Fusion", rarity: 5, tier: "S" },
+  { id: "mornye", name: "Mornye", sonata: "Fusion", rarity: 5, tier: "S" },
+
+  { id: "aalto", name: "Aalto", sonata: "Aero", rarity: 4, tier: "A" },
+  { id: "yangyang", name: "Yangyang", sonata: "Aero", rarity: 4, tier: "A" },
+  { id: "cartethyia", name: "Cartethyia", sonata: "Aero", rarity: 5, tier: "S" },
+  { id: "ciaccona", name: "Ciaccona", sonata: "Aero", rarity: 5, tier: "S" },
+  { id: "iuno", name: "Iuno", sonata: "Aero", rarity: 5, tier: "S" },
+  { id: "jianxin", name: "Jianxin", sonata: "Aero", rarity: 5, tier: "S" },
+  { id: "jiyan", name: "Jiyan", sonata: "Aero", rarity: 5, tier: "S" },
+  { id: "qingxiao", name: "Qingxiao", sonata: "Aero", rarity: 5, tier: "S" },
+  { id: "qiuyuan", name: "Qiuyuan", sonata: "Aero", rarity: 5, tier: "S" },
+  { id: "rover-aero", name: "Rover (Aero)", sonata: "Aero", rarity: 5, tier: "S" },
+  { id: "sigrika", name: "Sigrika", sonata: "Aero", rarity: 5, tier: "S" },
+
+  { id: "baizhi", name: "Baizhi", sonata: "Glacio", rarity: 4, tier: "A" },
+  { id: "sanhua", name: "Sanhua", sonata: "Glacio", rarity: 4, tier: "A" },
+  { id: "youhu", name: "Youhu", sonata: "Glacio", rarity: 4, tier: "A" },
+  { id: "carlotta", name: "Carlotta", sonata: "Glacio", rarity: 5, tier: "S" },
+  { id: "hiyuki", name: "Hiyuki", sonata: "Glacio", rarity: 5, tier: "S" },
+  { id: "lingyang", name: "Lingyang", sonata: "Glacio", rarity: 5, tier: "S" },
+  { id: "lucilla", name: "Lucilla", sonata: "Glacio", rarity: 5, tier: "S" },
+  { id: "suisui", name: "Suisui", sonata: "Glacio", rarity: 5, tier: "S" },
+  { id: "zhezhi", name: "Zhezhi", sonata: "Glacio", rarity: 5, tier: "S" },
+].map(char => ({
+  ...char,
+  image: `/image/character/${char.name.toLowerCase().replace(/ /g, "-").replace(/[()]/g, "")}.webp`
+}));
 
 /* ─────────────────────────────────────
    BOSS DATA (Hologram Mode)
@@ -77,33 +134,36 @@ interface Boss {
 
 const mockBosses: Boss[] = [
   // Tactical Hologram "Calamity"
-  { id: "tempest-mephis", name: "Tempest Mephis", category: "Tactical Hologram \"Calamity\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "impermanence-heron", name: "Impermanence Heron", category: "Tactical Hologram \"Calamity\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "mourning-aix", name: "Mourning Aix", category: "Tactical Hologram \"Calamity\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "feilian-beringal", name: "Feilian Beringal", category: "Tactical Hologram \"Calamity\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "crownless", name: "Crownless", category: "Tactical Hologram \"Calamity\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "inferno-rider", name: "Inferno Rider", category: "Tactical Hologram \"Calamity\"", imageUrl: "/images/boss-placeholder.webp" },
+  { id: "tempest-mephis", name: "Tempest Mephis", category: "Tactical Hologram \"Calamity\"" },
+  { id: "impermanence-heron", name: "Impermanence Heron", category: "Tactical Hologram \"Calamity\"" },
+  { id: "mourning-aix", name: "Mourning Aix", category: "Tactical Hologram \"Calamity\"" },
+  { id: "feilian-beringal", name: "Feilian Beringal", category: "Tactical Hologram \"Calamity\"" },
+  { id: "crownless", name: "Crownless", category: "Tactical Hologram \"Calamity\"" },
+  { id: "inferno-rider", name: "Inferno Rider", category: "Tactical Hologram \"Calamity\"" },
   // Tactical Hologram "Phantom Pain"
-  { id: "fallacy-no-return", name: "Fallacy no Return", category: "Tactical Hologram \"Phantom Pain\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "sentry-construct", name: "Sentry Construct", category: "Tactical Hologram \"Phantom Pain\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "hecate", name: "Hecate", category: "Tactical Hologram \"Phantom Pain\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "dragon-of-dirge", name: "Dragon of Dirge", category: "Tactical Hologram \"Phantom Pain\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "fleurdelys", name: "Fleurdelys", category: "Tactical Hologram \"Phantom Pain\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "lorelei", name: "Lorelei", category: "Tactical Hologram \"Phantom Pain\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "nightmare-kelpie", name: "Nightmare: Kelpie", category: "Tactical Hologram \"Phantom Pain\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "lady-of-the-sea", name: "Lady of the Sea", category: "Tactical Hologram \"Phantom Pain\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "lioness-of-glory", name: "Lioness of Glory", category: "Tactical Hologram \"Phantom Pain\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "the-false-sovereign", name: "The False Sovereign", category: "Tactical Hologram \"Phantom Pain\"", imageUrl: "/images/boss-placeholder.webp" },
+  { id: "fallacy-of-no-return", name: "Fallacy no Return", category: "Tactical Hologram \"Phantom Pain\"" },
+  { id: "sentry-construct", name: "Sentry Construct", category: "Tactical Hologram \"Phantom Pain\"" },
+  { id: "hecate", name: "Hecate", category: "Tactical Hologram \"Phantom Pain\"" },
+  { id: "dragon-of-dirge", name: "Dragon of Dirge", category: "Tactical Hologram \"Phantom Pain\"" },
+  { id: "fleurdelys", name: "Fleurdelys", category: "Tactical Hologram \"Phantom Pain\"" },
+  { id: "lorelei", name: "Lorelei", category: "Tactical Hologram \"Phantom Pain\"" },
+  { id: "nightmare-kelpie", name: "Nightmare: Kelpie", category: "Tactical Hologram \"Phantom Pain\"" },
+  { id: "lady-of-the-sea", name: "Lady of the Sea", category: "Tactical Hologram \"Phantom Pain\"" },
+  { id: "lioness-of-glory", name: "Lioness of Glory", category: "Tactical Hologram \"Phantom Pain\"" },
+  { id: "the-false-sovereign", name: "The False Sovereign", category: "Tactical Hologram \"Phantom Pain\"" },
   // Tactical Hologram "Synchronization"
-  { id: "dreamless", name: "Dreamless", category: "Tactical Hologram \"Synchronization\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "hyvatia", name: "Hyvatia", category: "Tactical Hologram \"Synchronization\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "sigillum", name: "Sigillum", category: "Tactical Hologram \"Synchronization\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "nameless-explorer", name: "Nameless Explorer", category: "Tactical Hologram \"Synchronization\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "reactor-husk", name: "Reactor Husk", category: "Tactical Hologram \"Synchronization\"", imageUrl: "/images/boss-placeholder.webp" },
+  { id: "dreamless", name: "Dreamless", category: "Tactical Hologram \"Synchronization\"" },
+  { id: "hyvatia", name: "Hyvatia", category: "Tactical Hologram \"Synchronization\"" },
+  { id: "sigillum", name: "Sigillum", category: "Tactical Hologram \"Synchronization\"" },
+  { id: "nameless-explorer", name: "Nameless Explorer", category: "Tactical Hologram \"Synchronization\"" },
+  { id: "reactor-husk", name: "Reactor Husk", category: "Tactical Hologram \"Synchronization\"" },
   // Tactical Hologram "Sparring"
-  { id: "denia", name: "Denia", category: "Tactical Hologram \"Sparring\"", imageUrl: "/images/boss-placeholder.webp" },
-  { id: "myriad-snare", name: "Myriad Snare (Rustfire Chassis)", category: "Tactical Hologram \"Sparring\"", imageUrl: "/images/boss-placeholder.webp" },
-];
+  { id: "denia", name: "Denia", category: "Tactical Hologram \"Sparring\"" },
+  { id: "myriad-snare-rustfire-chasiss", name: "Myriad Snare (Rustfire Chassis)", category: "Tactical Hologram \"Sparring\"" },
+].map(boss => ({
+  ...boss,
+  imageUrl: `/image/boss/${boss.id}.webp`
+}));
 
 const bossCategories = [...new Set(mockBosses.map((b) => b.category))];
 
@@ -134,24 +194,6 @@ function countUsage(charId: string, teams: TeamRow[]): number {
   return count;
 }
 
-const TIER_COLORS: Record<string, { border: string; bg: string; text: string }> = {
-  S: {
-    border: "border-amber-500/50",
-    bg: "bg-gradient-to-b from-amber-500/10 to-transparent",
-    text: "text-amber-400",
-  },
-  A: {
-    border: "border-violet-500/50",
-    bg: "bg-gradient-to-b from-violet-500/10 to-transparent",
-    text: "text-violet-400",
-  },
-  B: {
-    border: "border-zinc-600",
-    bg: "bg-zinc-800",
-    text: "text-zinc-400",
-  },
-};
-
 /* ─────────────────────────────────────
    CHARACTER ROSTER ICON
    ───────────────────────────────────── */
@@ -173,81 +215,87 @@ function CharacterIcon({
   showVigor: boolean;
   onClick: () => void;
 }) {
-  const tierStyle = TIER_COLORS[char.tier] ?? TIER_COLORS.B;
   const isBlocked = disabled || alreadyInTeam;
+  const isRarity5 = char.rarity === 5;
+
+  const bgStyle = isRarity5
+    ? "bg-yellow-900/40 border-yellow-500"
+    : "bg-purple-900/40 border-purple-500";
+
+  const textStyle = isRarity5 ? "text-yellow-500" : "text-purple-400";
 
   return (
     <button
       type="button"
       onClick={isBlocked ? undefined : onClick}
       disabled={isBlocked}
-      className={`group relative flex flex-col items-center gap-1.5 rounded-lg p-1 transition-all duration-200 ${
-        isBlocked
-          ? "cursor-not-allowed opacity-50 grayscale"
-          : "cursor-pointer hover:scale-105 hover:bg-zinc-800/60"
-      }`}
+      className={`group relative flex flex-col items-center gap-1.5 rounded-lg p-1 transition-all duration-200 ${isBlocked
+        ? "cursor-not-allowed opacity-50 grayscale"
+        : "cursor-pointer hover:scale-105 hover:bg-slate-100"
+        }`}
     >
       {/* Icon box */}
       <div
-        className={`relative flex h-16 w-16 items-center justify-center rounded-lg border-2 ${
-          alreadyInTeam ? "border-emerald-500/50" : tierStyle.border
-        } ${tierStyle.bg} transition-all duration-200 ${
-          !isBlocked ? "group-hover:shadow-lg group-hover:shadow-amber-500/5" : ""
-        }`}
+        className={`relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-lg border-2 ${alreadyInTeam ? "border-emerald-500/50" : bgStyle
+          } transition-all duration-200 ${!isBlocked ? "group-hover:shadow-lg" : ""
+          }`}
       >
-        {char.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={char.imageUrl}
+        {char.image ? (
+          <Image
+            src={char.image}
             alt={char.name}
-            className="h-full w-full rounded-md object-cover"
+            fill
+            sizes="64px"
+            className="object-cover rounded-[5px]"
           />
         ) : (
-          <User className="h-7 w-7 text-zinc-400" />
+          <User className={`h-7 w-7 ${alreadyInTeam ? "text-emerald-400" : textStyle}`} />
         )}
 
-        {/* Tier badge */}
-        <span
-          className={`absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold ${tierStyle.text} bg-zinc-900 ring-1 ring-zinc-800`}
-        >
-          {char.tier}
-        </span>
+        {/* Sonata (element) icon — top-left */}
+        <div className="absolute top-0 left-0 z-10 flex h-4 w-4 items-center justify-center rounded-br-lg bg-zinc-900/95">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/icons/sonata/${char.sonata.toLowerCase()}.webp`}
+            alt={char.sonata}
+            className="h-4.5 w-4.5 object-contain opacity-90"
+          />
+        </div>
 
         {/* Already-in-team check */}
         {alreadyInTeam && (
-          <div className="absolute inset-0 flex items-center justify-center rounded-md bg-emerald-950/60">
+          <div className="absolute inset-0 flex items-center justify-center rounded-md bg-emerald-950/60 z-20">
             <Check className="h-5 w-5 text-emerald-400" />
           </div>
         )}
 
-        {/* Vigor overlay */}
-        {showVigor && !alreadyInTeam && (
-          <span
-            className={`absolute inset-x-0 bottom-0 rounded-b-md py-0.5 text-center text-[10px] font-bold leading-none backdrop-blur-sm ${
-              vigor === 0
-                ? "bg-red-950/80 text-red-400"
-                : vigor < maxVigor
-                  ? "bg-zinc-900/80 text-amber-400"
-                  : "bg-zinc-900/80 text-emerald-400"
-            }`}
-          >
-            {vigor}
-          </span>
-        )}
       </div>
 
       {/* Name */}
       <span
-        className={`max-w-[68px] truncate text-center text-[10px] leading-tight ${
-          alreadyInTeam
-            ? "text-emerald-400/70"
-            : disabled
-              ? "text-zinc-600"
-              : "text-zinc-400 group-hover:text-zinc-200"
-        }`}
+        className={`max-w-[68px] truncate text-center text-[10px] leading-tight ${alreadyInTeam
+          ? "text-emerald-400/70"
+          : disabled
+            ? "text-slate-500"
+            : "text-slate-300 group-hover:text-white"
+          }`}
       >
         {char.name}
       </span>
+
+      {/* Vigor pill */}
+      {showVigor && !alreadyInTeam && (
+        <span
+          className={`rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wide border ${vigor === 0
+            ? "bg-red-950/40 text-red-400 border-red-900/50"
+            : vigor < maxVigor
+              ? "bg-amber-950/40 text-amber-400 border-amber-900/50"
+              : "bg-emerald-950/40 text-emerald-400 border-emerald-900/50"
+            }`}
+        >
+          {vigor}/{maxVigor}
+        </span>
+      )}
     </button>
   );
 }
@@ -264,26 +312,32 @@ function TeamSlot({
   onRemove: () => void;
 }) {
   if (character) {
-    const tierStyle = TIER_COLORS[character.tier] ?? TIER_COLORS.B;
+    const isRarity5 = character.rarity === 5;
+    const bgStyle = isRarity5
+      ? "bg-yellow-900/40 border-yellow-500"
+      : "bg-purple-900/40 border-purple-500";
+    const textStyle = isRarity5 ? "text-yellow-500" : "text-purple-400";
+
     return (
       <button
         type="button"
         onClick={onRemove}
-        className={`group relative flex h-[72px] w-[72px] cursor-pointer items-center justify-center rounded-xl border-2 ${tierStyle.border} ${tierStyle.bg} transition-all duration-200 hover:border-red-500/70 hover:shadow-lg hover:shadow-red-500/10`}
+        className={`group relative flex h-[72px] w-[72px] cursor-pointer items-center justify-center rounded-xl border-2 ${bgStyle} transition-all duration-200 hover:border-red-500/70 hover:shadow-lg hover:shadow-red-500/10`}
       >
-        {character.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={character.imageUrl}
+        {character.image ? (
+          <Image
+            src={character.image}
             alt={character.name}
-            className="h-full w-full rounded-[10px] object-cover"
+            fill
+            sizes="72px"
+            className="object-cover rounded-[8px]"
           />
         ) : (
-          <User className="h-8 w-8 text-zinc-300" />
+          <User className={`h-8 w-8 ${textStyle}`} />
         )}
 
         {/* Name label */}
-        <span className="absolute -bottom-5 max-w-[72px] truncate text-center text-[10px] font-medium text-zinc-400">
+        <span className="absolute -bottom-5 max-w-[72px] truncate text-center text-[10px] font-medium text-slate-300">
           {character.name}
         </span>
 
@@ -296,8 +350,8 @@ function TeamSlot({
   }
 
   return (
-    <div className="flex h-[72px] w-[72px] items-center justify-center rounded-xl border-2 border-dashed border-zinc-700/60 bg-zinc-900/40 transition-colors">
-      <Plus className="h-5 w-5 text-zinc-600" />
+    <div className="flex h-[72px] w-[72px] items-center justify-center rounded-xl border-2 border-dashed border-slate-600/60 bg-slate-800/50 transition-colors">
+      <Plus className="h-5 w-5 text-slate-400" />
     </div>
   );
 }
@@ -324,19 +378,17 @@ function TeamRowComponent({
   return (
     <div
       onClick={onSelect}
-      className={`group/row flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-4 transition-all duration-200 sm:gap-5 ${
-        isActive
-          ? "border-emerald-500/50 bg-emerald-950/10 ring-1 ring-emerald-500/20"
-          : "border-zinc-800/80 bg-zinc-900/50 hover:border-zinc-700/80 hover:bg-zinc-900/80"
-      }`}
+      className={`group/row flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-4 transition-all duration-200 sm:gap-5 ${isActive
+        ? "border-emerald-500/50 bg-emerald-950/20 ring-1 ring-emerald-500/20"
+        : "border-slate-700/60 bg-slate-800/40 hover:border-slate-600 hover:bg-slate-800/80"
+        }`}
     >
       {/* Row number */}
       <div
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold transition-colors ${
-          isActive
-            ? "bg-emerald-500 text-white"
-            : "bg-zinc-800 text-zinc-400"
-        }`}
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold transition-colors ${isActive
+          ? "bg-emerald-500 text-white"
+          : "bg-slate-700 text-slate-300"
+          }`}
       >
         {index + 1}
       </div>
@@ -362,7 +414,7 @@ function TeamRowComponent({
           e.stopPropagation();
           onDeleteRow();
         }}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-600 transition-all duration-200 hover:bg-red-950/50 hover:text-red-400"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-all duration-200 hover:bg-red-950/50 hover:text-red-400"
         title="Hapus baris tim"
       >
         <X className="h-4 w-4" />
@@ -384,32 +436,39 @@ function BossIcon({
   isSelected: boolean;
   onClick: () => void;
 }) {
+  const [imgError, setImgError] = useState(false);
+
   return (
     <button
       type="button"
       onClick={isSelected ? undefined : onClick}
       disabled={isSelected}
-      className={`group relative flex flex-col items-center gap-1.5 rounded-lg p-1 transition-all duration-200 ${
-        isSelected
-          ? "cursor-not-allowed opacity-50 grayscale"
-          : "cursor-pointer hover:scale-105 hover:bg-zinc-800/60"
-      }`}
+      className={`group relative flex flex-col items-center gap-1.5 rounded-lg p-1 transition-all duration-200 ${isSelected
+        ? "cursor-not-allowed opacity-50 grayscale"
+        : "cursor-pointer hover:scale-105 hover:bg-slate-100"
+        }`}
     >
-      <div className={`relative flex h-16 w-16 items-center justify-center rounded-lg border-2 ${
-        isSelected ? "border-emerald-500/50" : "border-cyan-500/30"
-      } bg-gradient-to-b from-cyan-500/10 to-transparent transition-all duration-200 ${
-        !isSelected ? "group-hover:border-cyan-500/70 group-hover:shadow-lg group-hover:shadow-cyan-500/10" : ""
-      }`}>
-        <Skull className="h-7 w-7 text-cyan-400/70" />
+      <div className={`relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-md border-2 ${isSelected ? "border-emerald-500/50" : "border-cyan-500/30"
+        } bg-gradient-to-b from-cyan-500/10 to-transparent transition-all duration-200 ${!isSelected ? "group-hover:border-cyan-500/70 group-hover:shadow-lg group-hover:shadow-cyan-500/10" : ""
+        }`}>
+        {boss.imageUrl && !imgError ? (
+          <img
+            src={boss.imageUrl}
+            alt={boss.name}
+            className="w-full h-full object-cover drop-shadow-md"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <Skull className="h-7 w-7 text-cyan-400/70" />
+        )}
         {isSelected && (
           <div className="absolute inset-0 flex items-center justify-center rounded-md bg-emerald-950/60">
             <Check className="h-5 w-5 text-emerald-400" />
           </div>
         )}
       </div>
-      <span className={`max-w-[68px] truncate text-center text-[10px] leading-tight ${
-        isSelected ? "text-emerald-400/70" : "text-zinc-400 group-hover:text-zinc-200"
-      }`}>
+      <span className={`max-w-[68px] truncate text-center text-[10px] leading-tight ${isSelected ? "text-emerald-400" : "text-slate-200 group-hover:text-white"
+        }`}>
         {boss.name}
       </span>
     </button>
@@ -427,16 +486,27 @@ function SelectedBossItem({
   boss: Boss;
   onRemove: () => void;
 }) {
+  const [imgError, setImgError] = useState(false);
+
   return (
-    <div className="group relative flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900 p-2 pr-8 transition-all duration-200 hover:border-cyan-800/50">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-cyan-500/30 bg-cyan-950/30">
-        <Skull className="h-5 w-5 text-cyan-400/80" />
+    <div className="group relative flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-2 pr-8 transition-all duration-200 hover:border-cyan-800/50">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-cyan-500/30 bg-cyan-950/30">
+        {boss.imageUrl && !imgError ? (
+          <img
+            src={boss.imageUrl}
+            alt={boss.name}
+            className="w-full h-full object-cover drop-shadow-md"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <Skull className="h-5 w-5 text-cyan-400/80" />
+        )}
       </div>
-      <span className="text-xs font-medium text-zinc-300">{boss.name}</span>
+      <span className="text-xs font-medium text-slate-700">{boss.name}</span>
       <button
         type="button"
         onClick={onRemove}
-        className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full text-zinc-600 transition-all duration-200 hover:bg-red-950/60 hover:text-red-400"
+        className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full text-slate-400 transition-all duration-200 hover:bg-red-950/60 hover:text-red-400"
         title="Hapus boss"
       >
         <X className="h-3 w-3" />
@@ -449,21 +519,128 @@ function SelectedBossItem({
    MAIN PAGE
    ───────────────────────────────────── */
 
-export default function PlannerPage() {
-  const [activeMode, setActiveMode] = useState<Mode>("ToA");
+function PlannerContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  const tabParam = searchParams.get("tab");
+  const initialMode = modes.find((m) => m.toLowerCase() === tabParam?.toLowerCase()) || "ToA";
+
+  const [activeMode, setActiveMode] = useState<Mode>(initialMode as Mode);
   const [teams, setTeams] = useState<TeamRow[]>(() =>
-    makeRows(DEFAULT_ROWS.ToA),
+    makeRows(DEFAULT_ROWS[initialMode as Mode]),
   );
   const [activeTeamIndex, setActiveTeamIndex] = useState<number | null>(null);
   const [selectedBosses, setSelectedBosses] = useState<Boss[]>([]);
+  const [activeFilter, setActiveFilter] = useState("All");
 
-  /* ── Checkout State ── */
-  const [loginMethod, setLoginMethod] = useState("");
+  /* ── Account Info Form State ── */
+  const [loginMethod, setLoginMethod] = useState("Kuro Games");
+  const [accountEmail, setAccountEmail] = useState("");
   const [server, setServer] = useState("");
-  const [uid, setUid] = useState("");
-  const [email, setEmail] = useState("");
-  const [whatsapp, setWhatsapp] = useState("");
-  const [selectedPayment, setSelectedPayment] = useState("");
+
+  /* ── Payment Method State ── */
+  const PAYMENT_METHODS = ["QRIS", "E-Wallet", "Virtual Account", "Transfer Bank"] as const;
+  type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
+
+  /* ── Confirmation Modal State ── */
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isFormComplete = loginMethod && accountEmail && server && paymentMethod;
+
+  /* ── Price Calculation ── */
+  const MODE_PRICES: Record<Mode, number> = {
+    ToA: 75000,
+    Whiwa: 60000,
+    Matrix: 50000,
+    Hologram: 100000,
+  };
+
+  const filledTeamCount = useMemo(() => {
+    return teams.filter((row) => row.slots.some((s) => s !== null)).length;
+  }, [teams]);
+
+  const estimatedPrice = useMemo(() => {
+    const base = MODE_PRICES[activeMode];
+    const teamMultiplier = Math.max(1, filledTeamCount);
+    const bossExtra = activeMode === "Hologram" ? selectedBosses.length * 25000 : 0;
+    return base * teamMultiplier + bossExtra;
+  }, [activeMode, filledTeamCount, selectedBosses.length]);
+
+  /* ── Order Summary Items ── */
+  const orderSummaryItems = useMemo(() => {
+    const items: { label: string; detail: string }[] = [];
+    const productName = `Joki End-Game: ${activeMode}${activeMode === "Hologram" && selectedBosses.length > 0 ? ` (${selectedBosses.length} Boss)` : ""} — ${filledTeamCount} Tim`;
+    items.push({ label: "Item Pembelian", detail: productName });
+    items.push({ label: "Kategori", detail: "End-Game" });
+    items.push({ label: "Jumlah", detail: "1" });
+    if (server) items.push({ label: "Server", detail: server });
+    return items;
+  }, [activeMode, filledTeamCount, selectedBosses, server]);
+
+  /* ── Handle Checkout Validation ── */
+  const handleCheckout = () => {
+    if (!activeMode) {
+      toast.error("Pilih jasa joki terlebih dahulu");
+      return;
+    }
+    if (filledTeamCount === 0) {
+      toast.error("Atur komposisi tim di Team Planner terlebih dahulu");
+      return;
+    }
+    if (!accountEmail || !loginMethod || !server) {
+      toast.error("Lengkapi informasi akun terlebih dahulu");
+      return;
+    }
+    if (!paymentMethod) {
+      toast.error("Pilih metode pembayaran terlebih dahulu");
+      return;
+    }
+
+    // All validated
+    handleOpenConfirm();
+  };
+
+  /* ── Handle Open Confirm Modal ── */
+  const handleOpenConfirm = () => {
+    setIsConfirmOpen(true);
+  };
+
+  /* ── Handle Confirm Purchase ── */
+  const handleConfirmPurchase = async () => {
+    setIsSubmitting(true);
+    try {
+      const productName = `Joki End-Game: ${activeMode}${activeMode === "Hologram" && selectedBosses.length > 0 ? ` (${selectedBosses.length} Boss)` : ""} — ${filledTeamCount} Tim`;
+      const payload = {
+        customerInfo: { loginMethod, accountEmail, server },
+        mode: "End-Game",
+        productName: productName,
+        teams: teams.map((row) => row.slots.filter(Boolean).map((c) => c!.name)),
+        bosses: selectedBosses.map((b) => b.name),
+        paymentMethod,
+        totalAmount: estimatedPrice,
+      };
+
+      const res = await fetch("/api/create-invoice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.orderId) {
+        setIsConfirmOpen(false);
+        router.push(`/invoice/${data.orderId}`);
+      }
+    } catch (err) {
+      console.error("Failed to create invoice:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   /* ── Switch mode → reset teams ── */
   const switchMode = useCallback((mode: Mode) => {
@@ -471,7 +648,8 @@ export default function PlannerPage() {
     setTeams(makeRows(DEFAULT_ROWS[mode]));
     setActiveTeamIndex(null);
     setSelectedBosses([]);
-  }, []);
+    router.replace(`${pathname}?tab=${mode.toLowerCase()}`, { scroll: false });
+  }, [pathname, router]);
 
   /* ── Vigor calculator ── */
   const vigorConfig = VIGOR_CONFIG[activeMode];
@@ -590,45 +768,21 @@ export default function PlannerPage() {
     setSelectedBosses((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
-  /* ── Checkout Handlers & Calculations ── */
-  const calculatedExtraCost = useMemo(() => {
-    let sTierCount = 0;
-    teams.forEach((row) => {
-      row.slots.forEach((char) => {
-        if (char && char.tier === "S") sTierCount++;
-      });
-    });
-    return `+${sTierCount * 5}%`; // Example logic: +5% per S tier character
-  }, [teams]);
-
-  const finalPrice = useMemo(() => {
-    const basePrice = 100000;
-    const extraPercent = parseInt(calculatedExtraCost.replace("+", "").replace("%", "")) || 0;
-    return basePrice + (basePrice * extraPercent) / 100;
-  }, [calculatedExtraCost]);
-
-  const handleCheckout = useCallback(() => {
-    const orderPayload = {
-      mode: activeMode,
-      teams: teams,
-      hologramBosses: selectedBosses,
-      extraCost: calculatedExtraCost,
-      publicData: { email, uid, server, loginMethod, whatsapp },
-      payment: selectedPayment,
-    };
-    console.log("Order Payload:", orderPayload);
-    alert("Mempersiapkan Invoice...");
-  }, [activeMode, teams, selectedBosses, calculatedExtraCost, email, uid, server, loginMethod, whatsapp, selectedPayment]);
-
   return (
-    <div className="min-h-screen bg-zinc-950 px-4 py-6 lg:px-8 lg:py-10">
-      <div className="mx-auto max-w-5xl space-y-6">
+    <div
+      className="relative min-h-screen w-full bg-cover bg-center bg-no-repeat bg-fixed"
+      style={{ backgroundImage: "url('/image/background/background.png')" }}
+    >
+      {/* Overlay Background */}
+      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm pointer-events-none" />
+
+      <div className="relative z-10 mx-auto max-w-5xl space-y-6 px-4 pt-24 pb-32 lg:px-8 lg:pt-28 lg:pb-36">
         {/* ─── Page Header ─── */}
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold tracking-tight text-white lg:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-white drop-shadow-md lg:text-3xl">
             Team Planner
           </h1>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-slate-200">
             Atur komposisi tim untuk setiap mode permainan. Vigor berkurang
             setiap penempatan.
           </p>
@@ -641,11 +795,10 @@ export default function PlannerPage() {
               key={mode}
               type="button"
               onClick={() => switchMode(mode)}
-              className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition-all duration-200 ${
-                activeMode === mode
-                  ? "bg-white text-zinc-900 shadow-lg shadow-white/5"
-                  : "bg-zinc-900 text-zinc-400 ring-1 ring-zinc-800 hover:bg-zinc-800 hover:text-zinc-200"
-              }`}
+              className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition-all duration-200 ${activeMode === mode
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-bold"
+                : "bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700/50"
+                }`}
             >
               {MODE_ICONS[mode]}
               {mode}
@@ -655,13 +808,13 @@ export default function PlannerPage() {
 
         {/* ─── TACTICAL HOLOGRAM (Hologram only, above Character Roster) ─── */}
         {activeMode === "Hologram" && (
-          <section className="rounded-2xl border border-zinc-800/80 bg-zinc-900/60 p-5 backdrop-blur-sm">
+          <section className="rounded-2xl border border-slate-700/60 bg-slate-900/85 shadow-2xl shadow-black/50 text-white p-5 backdrop-blur-sm">
             <div className="mb-4 flex items-end justify-between">
               <div>
-                <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">
+                <h2 className="text-white font-bold uppercase tracking-wide">
                   Tactical Hologram
                 </h2>
-                <p className="mt-1 text-[11px] text-zinc-600">
+                <p className="mt-1 text-[11px] text-slate-400">
                   Klik boss untuk menambahkan ke daftar target
                 </p>
               </div>
@@ -675,7 +828,7 @@ export default function PlannerPage() {
                 const bossesInCategory = mockBosses.filter((b) => b.category === category);
                 return (
                   <div key={category}>
-                    <h3 className="mb-3 border-b border-zinc-800 pb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+                    <h3 className="mb-3 border-b border-slate-700/60 pb-2 text-[11px] font-bold uppercase tracking-wider text-white">
                       {category}
                     </h3>
                     <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12">
@@ -696,17 +849,17 @@ export default function PlannerPage() {
         )}
 
         {/* ─── CHARACTER ROSTER ─── */}
-        <section className="rounded-2xl border border-zinc-800/80 bg-zinc-900/60 p-5 backdrop-blur-sm">
-          <div className="mb-4 flex items-end justify-between">
+        <section className="rounded-2xl border border-slate-700/60 bg-slate-900/85 shadow-2xl shadow-black/50 text-white p-5 backdrop-blur-sm">
+          <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
             <div>
-              <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">
+              <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-100">
                 Character Roster
               </h2>
-              <p className="mt-1 text-[11px] text-zinc-600">
+              <p className="mt-1 text-[11px] text-slate-400">
                 {activeTeamIndex !== null
                   ? <>
-                      Menambahkan ke <span className="font-semibold text-emerald-400">Tim {activeTeamIndex + 1}</span> — klik karakter untuk memilih
-                    </>
+                    Menambahkan ke <span className="font-semibold text-emerald-400">Tim {activeTeamIndex + 1}</span> — klik karakter untuk memilih
+                  </>
                   : "Pilih tim di bawah terlebih dahulu"
                 }
               </p>
@@ -719,33 +872,66 @@ export default function PlannerPage() {
                 </span>
               )}
               {(activeMode === "ToA" || activeMode === "Matrix") && (
-                <span className="rounded-md bg-zinc-800 px-2.5 py-1 text-[10px] font-semibold text-zinc-500">
+                <span className="rounded-md bg-amber-500/20 px-2.5 py-1 text-[10px] font-semibold text-amber-400">
                   Max Vigor: {vigorConfig.max}
                 </span>
               )}
             </div>
           </div>
 
-          <div className={`grid grid-cols-6 gap-2 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 ${
-            activeTeamIndex === null ? "pointer-events-none opacity-40" : ""
-          }`}>
-            {characters.map((char) => {
-              const vigor = getRemainingVigor(char.id);
-              const isDisabled = disabledSet.has(char.id) || !activeTeamHasRoom;
-              const inTeam = charsInActiveTeam.has(char.id);
-              return (
-                <CharacterIcon
-                  key={char.id}
-                  char={char}
-                  vigor={vigor}
-                  maxVigor={vigorConfig.max}
-                  disabled={isDisabled}
-                  alreadyInTeam={inTeam}
-                  showVigor={activeMode === "ToA" || activeMode === "Matrix"}
-                  onClick={() => handleAddCharacter(char)}
-                />
-              );
-            })}
+          {/* Elements Filter Tabs */}
+          <div className="mb-6 flex flex-wrap gap-2">
+            {[
+              { name: 'All', icon: null },
+              { name: 'Electro', icon: '/icons/sonata/Electro.webp' },
+              { name: 'Havoc', icon: '/icons/sonata/Havoc.webp' },
+              { name: 'Spectro', icon: '/icons/sonata/Spectro.webp' },
+              { name: 'Fusion', icon: '/icons/sonata/Fusion.webp' },
+              { name: 'Aero', icon: '/icons/sonata/Aero.webp' },
+              { name: 'Glacio', icon: '/icons/sonata/Glacio.webp' }
+            ].map((filter) => (
+              <button
+                key={filter.name}
+                type="button"
+                onClick={() => setActiveFilter(filter.name)}
+                className={`flex items-center justify-center gap-2 rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-all duration-200 border ${activeFilter === filter.name
+                  ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/30"
+                  : "bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700/50"
+                  }`}
+              >
+                {filter.icon && (
+                  <img
+                    src={filter.icon}
+                    alt={`${filter.name} icon`}
+                    className="-ml-1.5 w-8 h-8 object-contain opacity-90"
+                  />
+                )}
+                <span>{filter.name}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className={`grid grid-cols-6 gap-2 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 ${activeTeamIndex === null ? "pointer-events-none opacity-40" : ""
+            }`}>
+            {characters
+              .filter(char => activeFilter === "All" || char.sonata === activeFilter)
+              .map((char) => {
+                const vigor = getRemainingVigor(char.id);
+                const isDisabled = disabledSet.has(char.id) || !activeTeamHasRoom;
+                const inTeam = charsInActiveTeam.has(char.id);
+                return (
+                  <CharacterIcon
+                    key={char.id}
+                    char={char}
+                    vigor={vigor}
+                    maxVigor={vigorConfig.max}
+                    disabled={isDisabled}
+                    alreadyInTeam={inTeam}
+                    showVigor={activeMode === "ToA" || activeMode === "Matrix"}
+                    onClick={() => handleAddCharacter(char)}
+                  />
+                );
+              })}
           </div>
         </section>
 
@@ -757,12 +943,12 @@ export default function PlannerPage() {
                 <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-400">
                   Target Boss Hologram
                 </h2>
-                <p className="mt-1 text-[11px] text-zinc-600">
+                <p className="mt-1 text-[11px] text-slate-400">
                   Daftar boss yang akan ditantang
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="rounded-md bg-zinc-800 px-2.5 py-1 text-[10px] font-semibold text-zinc-500">
+                <span className="rounded-md bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-500">
                   {selectedBosses.length} Boss
                 </span>
                 <button
@@ -789,17 +975,17 @@ export default function PlannerPage() {
         )}
 
         {/* ─── TEAMS & SCORES ─── */}
-        <section className="rounded-2xl border border-zinc-800/80 bg-zinc-900/60 p-5 backdrop-blur-sm">
+        <section className="rounded-2xl border border-slate-700/60 bg-slate-900/85 shadow-2xl shadow-black/50 text-white p-5 backdrop-blur-sm">
           <div className="mb-4 flex items-end justify-between">
             <div>
-              <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">
+              <h2 className="text-white font-bold tracking-wide uppercase">
                 Teams &amp; Scores
               </h2>
-              <p className="mt-1 text-[11px] text-zinc-600">
+              <p className="mt-1 text-[11px] text-slate-400">
                 Klik karakter di slot untuk menghapusnya
               </p>
             </div>
-            <span className="rounded-md bg-zinc-800 px-2.5 py-1 text-[10px] font-semibold text-zinc-500">
+            <span className="rounded-md bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-500">
               {teams.length} Tim
             </span>
           </div>
@@ -823,7 +1009,7 @@ export default function PlannerPage() {
             <button
               type="button"
               onClick={addRow}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-700 py-3 text-sm font-semibold text-zinc-400 transition-all duration-200 hover:border-emerald-700 hover:bg-emerald-950/20 hover:text-emerald-400"
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-3 text-sm font-semibold text-slate-600 transition-all duration-200 hover:border-emerald-700 hover:bg-emerald-950/20 hover:text-emerald-400"
             >
               <Plus className="h-4 w-4" />
               + ADD TEAM
@@ -831,172 +1017,205 @@ export default function PlannerPage() {
           )}
         </section>
 
-        {/* ─── CHECKOUT SECTION ─── */}
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 backdrop-blur-sm">
-          <div className="mb-6 flex flex-col gap-1 border-b border-zinc-800/80 pb-4">
-            <h2 className="text-lg font-bold text-white">Ringkasan Pesanan</h2>
-            <p className="text-xs text-zinc-500">
-              Periksa kembali konfigurasi pesanan Anda sebelum melanjutkan.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex justify-between rounded-lg bg-zinc-950/50 p-3 text-sm">
-              <span className="text-zinc-400">Mode Terpilih</span>
-              <span className="font-semibold text-zinc-200">{activeMode}</span>
-            </div>
-
-            {activeMode === "Hologram" && selectedBosses.length > 0 && (
-              <div className="flex justify-between rounded-lg bg-zinc-950/50 p-3 text-sm">
-                <span className="text-zinc-400">Target Boss</span>
-                <span className="max-w-[200px] truncate text-right font-semibold text-zinc-200" title={selectedBosses.map((b) => b.name).join(", ")}>
-                  {selectedBosses.map((b) => b.name).join(", ")}
-                </span>
+        {/* ─── INFORMASI AKUN ─── */}
+        <section className="rounded-2xl border border-slate-700/60 bg-slate-900/85 shadow-2xl shadow-black/50 text-white p-6">
+          <h2 className="text-white font-bold tracking-wide flex items-center gap-2 mb-4 uppercase">
+            <User className="h-4 w-4" />
+            Informasi Akun
+          </h2>
+          <p className="mt-1 text-[11px] text-slate-400 mb-6">
+            Masukkan data akun game Anda untuk proses joki
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Metode Login</label>
+              <div className="relative">
+                <select
+                  value={loginMethod}
+                  onChange={(e) => setLoginMethod(e.target.value)}
+                  className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 pr-8 text-sm text-slate-100 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                >
+                  <option value="Kuro Games">Kuro Games</option>
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
               </div>
-            )}
-
-            <div className="flex justify-between rounded-lg bg-zinc-950/50 p-3 text-sm">
-              <span className="text-zinc-400">Kalkulasi Biaya Ekstra</span>
-              <span className="font-semibold text-rose-400">{calculatedExtraCost}</span>
             </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Email Akun</label>
+              <input
+                type="email"
+                placeholder="email@example.com"
+                value={accountEmail}
+                onChange={(e) => setAccountEmail(e.target.value)}
+                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Server</label>
+              <div className="relative">
+                <select
+                  value={server}
+                  onChange={(e) => setServer(e.target.value)}
+                  className="w-full appearance-none rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 pr-8 text-sm text-slate-100 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                >
+                  <option value="">Pilih Server...</option>
+                  <option value="SEA">SEA</option>
+                  <option value="ASIA">ASIA</option>
+                  <option value="AMERICA">AMERICA</option>
+                  <option value="EUROPE">EUROPE</option>
+                  <option value="HK-MO-TW">HK-MO-TW</option>
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+        </section>
 
-            <div className="flex items-end justify-between rounded-lg bg-cyan-950/20 p-4 pt-6 text-sm border border-cyan-900/30">
-              <span className="text-zinc-400">Total Harga Akhir</span>
-              <span className="text-xl font-bold text-cyan-400">
-                Rp {finalPrice.toLocaleString("id-ID")}
+        {/* ─── METODE PEMBAYARAN ─── */}
+        <section className="rounded-2xl border border-slate-700/60 bg-slate-900/85 shadow-2xl shadow-black/50 text-white p-6">
+          <h2 className="text-white font-bold tracking-wide flex items-center gap-2 mb-4 uppercase">
+            <CreditCard className="h-4 w-4" />
+            Metode Pembayaran
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {(["QRIS", "E-Wallet", "Virtual Account", "Transfer Bank"] as const).map((method) => (
+              <button
+                key={method}
+                type="button"
+                onClick={() => setPaymentMethod(method)}
+                className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-sm font-semibold transition-all duration-200 ${paymentMethod === method
+                  ? "border-blue-500 bg-blue-600/20 text-blue-400 shadow-sm"
+                  : "border-slate-700/50 bg-slate-800/80 text-slate-300 hover:border-slate-600 hover:bg-slate-700"
+                  }`}
+              >
+                <CreditCard className={`h-6 w-6 ${paymentMethod === method ? "text-blue-500" : "text-slate-400"}`} />
+                {method}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* ─── STICKY FOOTER NAVIGASI PESANAN ─── */}
+      </div>
+
+      <div className="fixed bottom-0 left-0 w-full z-50 bg-blue-700 py-3 shadow-[0_-4px_10px_rgba(0,0,0,0.4)]">
+        {/* Container Tengah: Membatasi lebar konten agar tidak mentok kiri-kanan */}
+        <div className="w-full max-w-5xl mx-auto flex items-center justify-between px-6">
+
+          {/* Bagian Kiri: Info Pesanan & Harga */}
+          <div className="flex flex-col">
+            <span className="text-slate-200 text-sm font-medium">
+              Paket: <span className="font-semibold text-white">{activeMode} {activeMode === "Hologram" && selectedBosses.length > 0 ? `(${selectedBosses.length} Boss)` : ""}</span>
+            </span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-slate-200 text-sm">Total:</span>
+              {/* Pastikan nominal harga berwarna putih terang dan tebal */}
+              <span className="text-white text-xl font-extrabold tracking-wide">
+                {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(estimatedPrice)}
               </span>
             </div>
           </div>
 
-          <div className="mt-8 border-t border-zinc-800/80 pt-6">
-            <h3 className="mb-4 text-sm font-semibold text-zinc-300">Data Akun & Kontak</h3>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-zinc-400">Platform Login</label>
-                <select
-                  value={loginMethod}
-                  onChange={(e) => setLoginMethod(e.target.value)}
-                  className="rounded-lg border border-zinc-800 bg-zinc-950 p-2.5 text-sm text-zinc-300 focus:border-cyan-700 focus:outline-none"
-                >
-                  <option value="" disabled>Pilih Platform</option>
-                  <option value="Kuro Games">Kuro Games</option>
-                  <option value="Google">Google</option>
-                  <option value="X/Twitter">X/Twitter</option>
-                  <option value="Apple">Apple</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-zinc-400">Server</label>
-                <select
-                  value={server}
-                  onChange={(e) => setServer(e.target.value)}
-                  className="rounded-lg border border-zinc-800 bg-zinc-950 p-2.5 text-sm text-zinc-300 focus:border-cyan-700 focus:outline-none"
-                >
-                  <option value="" disabled>Pilih Server</option>
-                  <option value="SEA">SEA</option>
-                  <option value="Asia">Asia</option>
-                  <option value="America">America</option>
-                  <option value="Europe">Europe</option>
-                  <option value="HMT">HMT</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-zinc-400">UID Akun</label>
-                <input
-                  type="text"
-                  placeholder="Masukkan UID"
-                  value={uid}
-                  onChange={(e) => setUid(e.target.value)}
-                  className="rounded-lg border border-zinc-800 bg-zinc-950 p-2.5 text-sm text-zinc-300 placeholder:text-zinc-600 focus:border-cyan-700 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-zinc-400">Email Akun</label>
-                <input
-                  type="email"
-                  placeholder="email@contoh.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="rounded-lg border border-zinc-800 bg-zinc-950 p-2.5 text-sm text-zinc-300 placeholder:text-zinc-600 focus:border-cyan-700 focus:outline-none"
-                />
-              </div>
-
-              <div className="col-span-1 flex flex-col gap-1.5 md:col-span-2">
-                <label className="text-xs text-zinc-400">Nomor WhatsApp</label>
-                <input
-                  type="tel"
-                  placeholder="awali dengan 62..."
-                  value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value)}
-                  className="rounded-lg border border-zinc-800 bg-zinc-950 p-2.5 text-sm text-zinc-300 placeholder:text-zinc-600 focus:border-cyan-700 focus:outline-none"
-                />
-              </div>
-            </div>
-            
-            <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-relaxed text-amber-500/80">
-              <Shield className="mt-0.5 h-3 w-3 shrink-0" />
-              Demi keamanan, password hanya akan diminta melalui chat WhatsApp setelah pembayaran terverifikasi.
-            </p>
-          </div>
-
-          <div className="mt-8 border-t border-zinc-800/80 pt-6">
-            <h3 className="mb-4 text-sm font-semibold text-zinc-300">Metode Pembayaran</h3>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              <button
-                type="button"
-                onClick={() => setSelectedPayment("QRIS")}
-                className={`flex flex-col items-center gap-2 rounded-xl border p-4 transition-all duration-200 ${
-                  selectedPayment === "QRIS"
-                    ? "border-cyan-500 bg-cyan-950/20 text-cyan-400"
-                    : "border-zinc-800 bg-zinc-950 text-zinc-400 hover:border-zinc-700 hover:bg-zinc-900"
-                }`}
-              >
-                <QrCode className="h-6 w-6" />
-                <span className="text-xs font-semibold">QRIS (Instant)</span>
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => setSelectedPayment("E-Wallet")}
-                className={`flex flex-col items-center gap-2 rounded-xl border p-4 transition-all duration-200 ${
-                  selectedPayment === "E-Wallet"
-                    ? "border-cyan-500 bg-cyan-950/20 text-cyan-400"
-                    : "border-zinc-800 bg-zinc-950 text-zinc-400 hover:border-zinc-700 hover:bg-zinc-900"
-                }`}
-              >
-                <Smartphone className="h-6 w-6" />
-                <span className="text-xs font-semibold">E-Wallet</span>
-                <span className="text-[10px] text-zinc-500">GoPay, OVO, DANA</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSelectedPayment("VA")}
-                className={`flex flex-col items-center gap-2 rounded-xl border p-4 transition-all duration-200 ${
-                  selectedPayment === "VA"
-                    ? "border-cyan-500 bg-cyan-950/20 text-cyan-400"
-                    : "border-zinc-800 bg-zinc-950 text-zinc-400 hover:border-zinc-700 hover:bg-zinc-900"
-                }`}
-              >
-                <CreditCard className="h-6 w-6" />
-                <span className="text-xs font-semibold">Virtual Account</span>
-                <span className="text-[10px] text-zinc-500">BCA, Mandiri, BNI, BRI</span>
-              </button>
-            </div>
-          </div>
-
+          {/* Bagian Kanan: Tombol Action */}
           <button
             type="button"
             onClick={handleCheckout}
-            className="mt-6 w-full rounded-lg bg-zinc-100 py-4 font-bold text-zinc-950 transition-all duration-200 hover:bg-zinc-300"
+            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-8 py-2.5 rounded-md transition-colors flex items-center gap-2"
           >
-            Generate Invoice & Lanjut ke WA
+            Order Sekarang!
           </button>
-        </section>
+        </div>
       </div>
+
+      {/* ─── MODAL KONFIRMASI ORDER ─── */}
+      {isConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-slate-800 px-6 py-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5" />
+                KONFIRMASI ORDER
+              </h3>
+              <button type="button" onClick={() => setIsConfirmOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              {/* Order Summary */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Ringkasan Pesanan</h4>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 divide-y divide-slate-200">
+                  {orderSummaryItems.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between px-4 py-2.5">
+                      <span className="text-sm text-slate-600">{item.label}</span>
+                      <span className="text-sm font-semibold text-slate-800">{item.detail}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between px-4 py-2.5">
+                    <span className="text-sm text-slate-600">Metode Pembayaran</span>
+                    <span className="text-sm font-semibold text-blue-600">{paymentMethod}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Total */}
+              <div className="flex items-center justify-between rounded-lg bg-blue-50 border border-blue-200 px-4 py-3">
+                <span className="text-sm font-semibold text-slate-700">Total Pembayaran</span>
+                <span className="text-xl font-bold text-blue-700">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(estimatedPrice)}</span>
+              </div>
+
+              {/* T&C Warning */}
+              <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
+                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  Dengan menekan &quot;BELI SEKARANG&quot;, Anda menyetujui <span className="font-semibold underline cursor-pointer">Syarat &amp; Ketentuan</span> layanan kami. Proses joki akan dimulai setelah pembayaran berhasil dikonfirmasi. Tidak ada pengembalian dana setelah proses dimulai.
+                </p>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmOpen(false)}
+                  className="flex-1 rounded-xl border border-slate-300 bg-white py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  BATAL
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmPurchase}
+                  disabled={isSubmitting}
+                  className="flex-1 rounded-xl bg-blue-600 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-500 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <span className="inline-block h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <ShoppingCart className="h-4 w-4" />
+                      BELI SEKARANG
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function PlannerPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-slate-900 text-white">
+        Loading...
+      </div>
+    }>
+      <PlannerContent />
+    </Suspense>
   );
 }
