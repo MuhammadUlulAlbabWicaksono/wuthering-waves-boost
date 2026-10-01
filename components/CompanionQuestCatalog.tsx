@@ -1,19 +1,28 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { CheckSquare, Square } from "lucide-react";
-import { companionQuestsData, CompanionQuest as Quest } from "../data/companionQuests";
+import { CheckSquare, Square, Check } from "lucide-react";
 
 interface CompanionQuestCatalogProps {
+  dbCategories: any[];
   onTotalChange?: (total: number) => void;
   onSelectionChange?: (selectedIds: string[]) => void;
 }
 
 export default function CompanionQuestCatalog({
+  dbCategories,
   onTotalChange,
   onSelectionChange,
 }: CompanionQuestCatalogProps) {
-  const quests: Quest[] = companionQuestsData;
+  const quests = useMemo(() => {
+    return dbCategories.flatMap(c => 
+      c.quests.map((q: any) => ({
+        id: q.id,
+        name: q.name,
+        price: q.flatPrice || 0
+      }))
+    );
+  }, [dbCategories]);
 
   const [selectedQuests, setSelectedQuests] = useState<Set<string>>(new Set());
 
@@ -25,6 +34,11 @@ export default function CompanionQuestCatalog({
         total += quest.price;
       }
     });
+
+    if (quests.length > 0 && selectedQuests.size === quests.length) {
+      total = total * 0.9;
+    }
+
     return total;
   }, [selectedQuests, quests]);
 
@@ -79,24 +93,17 @@ export default function CompanionQuestCatalog({
   return (
     <div className="flex flex-col gap-6 text-slate-200">
       {/* Tombol Pilih Semua */}
-      <div className="flex items-center justify-between border-b border-slate-700/60 pb-4">
-        <button
-          type="button"
-          onClick={handleSelectAll}
-          className="flex items-center gap-2 text-sm font-semibold transition-colors hover:text-white"
-        >
-          {allSelected ? (
-            <CheckSquare className="h-5 w-5 text-blue-500" />
-          ) : someSelected ? (
-            <div className="flex h-5 w-5 items-center justify-center rounded border-2 border-blue-500 bg-blue-500/20">
-              <div className="h-2.5 w-2.5 rounded-sm bg-blue-500" />
-            </div>
-          ) : (
-            <Square className="h-5 w-5 text-slate-500" />
-          )}
-          <span>Pilih Semua Companion Quest</span>
-        </button>
-        <span className="text-xs font-medium text-slate-400">
+      <div className="flex items-center gap-3 p-4 rounded-xl border border-slate-700/60 bg-slate-800/40 cursor-pointer hover:bg-slate-700/60 transition-colors" onClick={handleSelectAll}>
+        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${allSelected ? 'bg-blue-600 border-blue-600' : 'border-slate-500'}`}>
+          {allSelected && <Check className="w-3.5 h-3.5 text-white" />}
+        </div>
+        <span className="text-sm font-bold text-slate-200 flex-1">Pilih Semua Companion Quest</span>
+        {allSelected && (
+          <span className="ml-2 px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            -10% Diskon
+          </span>
+        )}
+        <span className="text-xs font-medium text-slate-400 ml-4">
           {selectedQuests.size} / {quests.length} Dipilih
         </span>
       </div>

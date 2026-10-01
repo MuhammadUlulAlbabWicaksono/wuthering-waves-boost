@@ -1,30 +1,45 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ChevronDown, ChevronUp, CheckSquare, Square, Star } from 'lucide-react';
-import { explorationQuestData } from '../data/explorationQuest';
+import { ChevronDown, ChevronUp, CheckSquare, Square, Check } from 'lucide-react';
+import Image from 'next/image';
 import { useStickyState } from '@/hooks/useStickyState';
 
 
 const AST_RATE = 200;
 
 interface QuestCatalogProps {
+  dbCategories: any[];
   onTotalChange?: (total: number) => void;
   onSelectionChange?: (selectedIds: string[]) => void;
 }
 
-export default function QuestCatalog({ onTotalChange, onSelectionChange }: QuestCatalogProps) {
+export default function QuestCatalog({ dbCategories, onTotalChange, onSelectionChange }: QuestCatalogProps) {
+  const explorationQuestData = useMemo(() => {
+    const data: Record<string, { id: string, name: string, astrite: number }[]> = {};
+    dbCategories.forEach((c: any) => {
+      const regionName = c.name.replace("Exploration Quests - ", "");
+      data[regionName] = c.quests.map((q: any) => ({
+        id: q.id,
+        name: q.name,
+        astrite: q.astriteReward
+      }));
+    });
+    return data;
+  }, [dbCategories]);
+
   const regions = Object.keys(explorationQuestData);
+  
   // Default to having the first region expanded
   const [expandedRegions, setExpandedRegions] = useStickyState<Set<string>>(
-    new Set([regions[0]]),
-    "joki_questOpenRegions",
+    new Set(regions.length > 0 ? [regions[0]] : []),
+    "joki_questOpenRegions_v2",
     (set) => JSON.stringify(Array.from(set)),
     (str) => new Set(JSON.parse(str))
   );
   const [selectedQuests, setSelectedQuests] = useStickyState<Set<string>>(
     new Set(),
-    "joki_questSelection",
+    "joki_questSelection_v2",
     (set) => JSON.stringify(Array.from(set)),
     (str) => new Set(JSON.parse(str))
   );
@@ -41,8 +56,7 @@ export default function QuestCatalog({ onTotalChange, onSelectionChange }: Quest
     });
   };
 
-  const handleToggleQuest = (regionName: string, questName: string) => {
-    const questId = `${regionName}|${questName}`;
+  const handleToggleQuest = (questId: string) => {
     setSelectedQuests(prev => {
       const next = new Set(prev);
       if (next.has(questId)) {
@@ -54,14 +68,26 @@ export default function QuestCatalog({ onTotalChange, onSelectionChange }: Quest
     });
   };
 
-
-
+  const handleSelectAll = (regionName: string, questsInRegion: any[]) => {
+    const allSelected = questsInRegion.every((q) => selectedQuests.has(q.id));
+    setSelectedQuests((prev) => {
+      const next = new Set(prev);
+      questsInRegion.forEach((q) => {
+        if (allSelected) {
+          next.delete(q.id);
+        } else {
+          next.add(q.id);
+        }
+      });
+      return next;
+    });
+  };
   const summary = useMemo(() => {
     let finalPrice = 0;
 
     regions.forEach(region => {
       const questsInRegion = explorationQuestData[region];
-      const selectedInRegion = questsInRegion.filter(q => selectedQuests.has(`${region}|${q.name}`));
+      const selectedInRegion = questsInRegion.filter(q => selectedQuests.has(q.id));
 
       if (selectedInRegion.length > 0) {
         let regionAstrite = 0;
@@ -69,9 +95,13 @@ export default function QuestCatalog({ onTotalChange, onSelectionChange }: Quest
           regionAstrite += q.astrite;
         });
 
-        const regionOriginalPrice = regionAstrite * AST_RATE;
+        let regionPrice = regionAstrite * AST_RATE;
+        
+        if (selectedInRegion.length === questsInRegion.length) {
+          regionPrice = regionPrice * 0.9;
+        }
 
-        finalPrice += regionAstrite * AST_RATE;
+        finalPrice += regionPrice;
       }
     });
 
@@ -92,7 +122,7 @@ export default function QuestCatalog({ onTotalChange, onSelectionChange }: Quest
       {regions.map(region => {
         const questsInRegion = explorationQuestData[region];
         const isExpanded = expandedRegions.has(region);
-        const selectedInRegion = questsInRegion.filter(q => selectedQuests.has(`${region}|${q.name}`));
+        const selectedInRegion = questsInRegion.filter(q => selectedQuests.has(q.id));
         const allSelected = selectedInRegion.length === questsInRegion.length;
 
         return (
@@ -125,19 +155,29 @@ export default function QuestCatalog({ onTotalChange, onSelectionChange }: Quest
             {isExpanded && (
               <div className="mb-6 px-1 animate-in slide-in-from-top-2 fade-in duration-200">
 
+                <div className="flex items-center gap-3 p-4 border-b border-slate-700/50 cursor-pointer hover:bg-slate-700/30 transition-colors" onClick={() => handleSelectAll(region, questsInRegion)}>
+                  <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${allSelected ? 'bg-blue-600 border-blue-600' : 'border-slate-500'}`}>
+                    {allSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                  </div>
+                  <span className="text-sm font-bold text-slate-200">Pilih Semua {region}</span>
+                  {allSelected && (
+                    <span className="ml-2 px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      -10% Diskon
+                    </span>
+                  )}
+                </div>
 
                 {/* Single Column Layout */}
-                <div className="flex flex-col gap-2 border-t border-slate-700/50 p-4">
+                <div className="flex flex-col gap-2 p-4">
                   {questsInRegion.map(quest => {
-                    const questId = `${region}|${quest.name}`;
-                    const isSelected = selectedQuests.has(questId);
+                    const isSelected = selectedQuests.has(quest.id);
                     const price = quest.astrite * AST_RATE;
 
                     return (
                       <button
-                        key={quest.name}
+                        key={quest.id}
                         type="button"
-                        onClick={() => handleToggleQuest(region, quest.name)}
+                        onClick={() => handleToggleQuest(quest.id)}
                         className={`group flex items-center justify-between rounded-lg border px-4 py-3 transition-all duration-200 ${isSelected
                           ? "border-blue-500/50 bg-blue-900/30 text-white shadow-[0_0_10px_rgba(37,99,235,0.2)]"
                           : "border-slate-700/50 bg-slate-900/40 text-slate-300 hover:border-slate-500 hover:bg-slate-800/80"
@@ -158,8 +198,14 @@ export default function QuestCatalog({ onTotalChange, onSelectionChange }: Quest
                         {/* Bagian Kanan */}
                         <div className="flex items-center gap-4 shrink-0">
                           <div className="flex items-center gap-1 bg-slate-900/50 px-2 py-1 rounded-md border border-slate-700/50">
-                            <Star className="text-amber-500 fill-amber-500 w-3.5 h-3.5" />
-                            <span className="text-amber-500 font-bold text-sm">{quest.astrite}</span>
+                            <Image
+                              src="/icons/ui icon/astrite.webp"
+                              alt="Astrite"
+                              width={20}
+                              height={20}
+                              className="object-contain drop-shadow-[0_0_4px_rgba(245,158,11,0.4)]"
+                            />
+                            <span className="text-sm font-bold text-amber-500">{quest.astrite}</span>
                           </div>
                           <span className={`text-sm font-semibold tracking-wide w-20 text-right ${isSelected ? 'text-blue-400' : 'text-slate-400'}`}>
                             Rp {price.toLocaleString('id-ID')}

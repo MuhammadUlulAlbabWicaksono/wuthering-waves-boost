@@ -1,20 +1,8 @@
-"use client";
-
-import { use, useState, useEffect, useCallback } from "react";
-import { Clock, Copy, Check, CreditCard, ShoppingCart, AlertTriangle, ChevronLeft } from "lucide-react";
-import Link from "next/link";
-
-/* ─────────────────────────────────────
-   HELPERS
-   ───────────────────────────────────── */
-
-function formatRupiah(value: number) {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-  }).format(value);
-}
+import { notFound } from 'next/navigation';
+import prisma from '@/lib/prisma';
+import { Check, CreditCard, ShoppingCart, ChevronLeft } from 'lucide-react';
+import Link from 'next/link';
+import CountdownBanner from '@/components/CountdownBanner';
 
 function maskEmail(email: string): string {
   if (!email || !email.includes("@")) return "***";
@@ -28,22 +16,16 @@ function maskEmail(email: string): string {
   return `${visibleStart}${masked}${visibleEnd}@${domain}`;
 }
 
-function formatDeadline(isoString: string): string {
-  const d = new Date(isoString);
-  return d.toLocaleString("id-ID", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    timeZoneName: "short",
-  });
+function formatRupiah(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(value);
 }
 
-function formatDate(isoString: string): string {
-  const d = new Date(isoString);
-  return d.toLocaleString("id-ID", {
+function formatDate(date: Date): string {
+  return date.toLocaleString("id-ID", {
     day: "2-digit",
     month: "long",
     year: "numeric",
@@ -52,229 +34,45 @@ function formatDate(isoString: string): string {
   });
 }
 
-/* ─────────────────────────────────────
-   COPY BUTTON
-   ───────────────────────────────────── */
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* fallback ignored */
-    }
-  }, [text]);
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-      title="Salin"
-    >
-      {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-    </button>
-  );
-}
-
-/* ─────────────────────────────────────
-   COUNTDOWN TIMER
-   ───────────────────────────────────── */
-
-function CountdownBanner({ deadline }: { deadline: string }) {
-  const [remaining, setRemaining] = useState("");
-  const [expired, setExpired] = useState(false);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const end = new Date(deadline).getTime();
-      const diff = end - now;
-
-      if (diff <= 0) {
-        setExpired(true);
-        setRemaining("00:00:00");
-        clearInterval(interval);
-        return;
-      }
-
-      const mins = Math.floor(diff / 60000);
-      const secs = Math.floor((diff % 60000) / 1000);
-      setRemaining(`${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [deadline]);
-
-  return (
-    <div className={`rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 ${
-      expired 
-        ? "bg-red-50 border border-red-200" 
-        : "bg-amber-50 border border-amber-200"
-    }`}>
-      <div className="flex items-center gap-3">
-        <div className={`p-2 rounded-full ${expired ? "bg-red-100" : "bg-amber-100"}`}>
-          <Clock className={`h-5 w-5 ${expired ? "text-red-600" : "text-amber-600"}`} />
-        </div>
-        <div>
-          <p className={`text-xs font-semibold uppercase tracking-wider ${expired ? "text-red-700" : "text-amber-700"}`}>
-            {expired ? "WAKTU PEMBAYARAN HABIS" : "BATAS AKHIR PEMBAYARAN"}
-          </p>
-          <p className={`text-sm font-medium ${expired ? "text-red-600" : "text-amber-600"}`}>
-            {formatDeadline(deadline)}
-          </p>
-        </div>
-      </div>
-
-      <div className={`text-2xl font-mono font-bold px-4 py-1.5 rounded-lg ${
-        expired
-          ? "bg-red-100 text-red-700"
-          : "bg-amber-100 text-amber-700"
-      }`}>
-        {remaining || "--:--"}
-      </div>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────
-   DETAIL ROW
-   ───────────────────────────────────── */
-
-function DetailRow({
-  label,
-  value,
-  copyable = false,
-  badge = false,
-  badgeColor = "bg-slate-100 text-slate-600",
+export default async function InvoicePage({
+  params,
 }: {
-  label: string;
-  value: string;
-  copyable?: boolean;
-  badge?: boolean;
-  badgeColor?: string;
+  params: Promise<{ id: string }>;
 }) {
-  return (
-    <div className="flex items-start sm:items-center justify-between py-3 border-b border-slate-100 last:border-b-0 gap-4">
-      <span className="text-sm text-slate-500 shrink-0">{label}</span>
-      <div className="flex items-center gap-1.5 text-right">
-        {badge ? (
-          <span className={`px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wide ${badgeColor}`}>
-            {value}
-          </span>
-        ) : (
-          <span className="text-sm font-semibold text-slate-800 break-all">{value}</span>
-        )}
-        {copyable && <CopyButton text={value} />}
-      </div>
-    </div>
-  );
-}
+  const { id } = await params;
 
-/* ─────────────────────────────────────
-   INVOICE CONTENT
-   ───────────────────────────────────── */
+  // Validasi UUID untuk mencegah error Prisma query
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(id)) {
+    notFound();
+  }
 
-interface InvoiceData {
-  orderId: string;
-  createdAt: string;
-  deadline: string;
-  status: string;
-  customerInfo: { loginMethod: string; accountEmail: string; server: string };
-  mode: string;
-  teams: string[][];
-  bosses: string[];
-  paymentMethod: string;
-  totalAmount: number;
-}
-
-function InvoiceContent({ invoiceId }: { invoiceId: string }) {
-  const [invoice, setInvoice] = useState<InvoiceData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [paymentStatus, setPaymentStatus] = useState<"PENDING_PAYMENT" | "Paid">("PENDING_PAYMENT");
-
-  useEffect(() => {
-    const fetchInvoice = async () => {
-      try {
-        const res = await fetch(`/api/create-invoice?id=${encodeURIComponent(invoiceId)}`);
-        if (!res.ok) throw new Error("Failed to fetch invoice");
-        const data = await res.json();
-        setInvoice(data);
-        // Sinkronkan status dari server
-        if (data.status === "Paid") {
-          setPaymentStatus("Paid");
-        }
-      } catch (err) {
-        setError("Gagal memuat data invoice.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInvoice();
-  }, [invoiceId]);
-
-  /* ── Simulasi polling status pembayaran setiap 10 detik ── */
-  useEffect(() => {
-    if (paymentStatus === "Paid") return; // Sudah paid, stop polling
-
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/create-invoice?id=${encodeURIComponent(invoiceId)}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.status === "Paid") {
-            setPaymentStatus("Paid");
-            setInvoice(data);
+  const order = await prisma.order.findUnique({
+    where: { id },
+    include: {
+      items: {
+        include: {
+          quest: {
+            include: { category: true }
           }
         }
-      } catch {
-        /* silent fail */
       }
-    }, 10000);
+    }
+  });
 
-    return () => clearInterval(interval);
-  }, [invoiceId, paymentStatus]);
-
-  /* ── Simulasi pembayaran berhasil (tombol dev/testing) ── */
-  const simulatePayment = useCallback(() => {
-    setPaymentStatus("Paid");
-  }, []);
-
-  const isPaid = paymentStatus === "Paid";
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-          <p className="text-sm text-slate-500">Memuat tagihan...</p>
-        </div>
-      </div>
-    );
+  if (!order) {
+    notFound();
   }
 
-  if (error || !invoice) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <AlertTriangle className="h-10 w-10 text-red-400" />
-          <p className="text-sm text-slate-600">{error || "Invoice tidak ditemukan."}</p>
-          <Link href="/dashboard" className="text-sm text-blue-600 hover:underline">
-            Kembali ke Dashboard
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const { customerInfo } = invoice;
-  const maskedGameId = `${customerInfo.loginMethod} | ${maskEmail(customerInfo.accountEmail)} | ${customerInfo.server}`;
-  const productName = `Joki End-Game: ${invoice.mode}${invoice.bosses.length > 0 ? ` (${invoice.bosses.length} Boss)` : ""}`;
+  const isPaid = order.status === "PAID";
+  
+  // Kelompokkan item berdasarkan kategori (Region / Tipe)
+  const questsGrouped = order.items.reduce((acc, item) => {
+    const categoryName = item.quest.category.name;
+    if (!acc[categoryName]) acc[categoryName] = [];
+    acc[categoryName].push(item);
+    return acc;
+  }, {} as Record<string, typeof order.items>);
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 pt-24 pb-12 lg:px-8 lg:pt-28">
@@ -301,8 +99,10 @@ function InvoiceContent({ invoiceId }: { invoiceId: string }) {
           </div>
         )}
 
-        {/* Time Bomb Banner — only shown when NOT paid */}
-        {!isPaid && <CountdownBanner deadline={invoice.deadline} />}
+        {/* Time Bomb Banner */}
+        {!isPaid && order.paymentDeadline && (
+          <CountdownBanner deadline={order.paymentDeadline} />
+        )}
 
         {/* ─── DETAIL PEMBAYARAN ─── */}
         <section className="rounded-2xl border border-slate-200 bg-white shadow-md overflow-hidden">
@@ -316,27 +116,33 @@ function InvoiceContent({ invoiceId }: { invoiceId: string }) {
           <div className="p-6 space-y-5">
             {/* Pay Button — only shown when NOT paid */}
             {!isPaid && (
-              <button
-                type="button"
-                className="w-full flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold py-3.5 rounded-xl shadow-md shadow-amber-400/20 transition-all duration-200 text-sm"
-              >
-                <CreditCard className="h-5 w-5" />
-                Bayar Tagihan
-              </button>
+              order.paymentUrl ? (
+                <a
+                  href={order.paymentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold py-3.5 rounded-xl shadow-md shadow-amber-400/20 transition-all duration-200 text-sm"
+                >
+                  <CreditCard className="h-5 w-5" />
+                  Bayar Tagihan
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full flex items-center justify-center gap-2 bg-slate-200 text-slate-500 font-bold py-3.5 rounded-xl cursor-not-allowed text-sm"
+                >
+                  <CreditCard className="h-5 w-5" />
+                  Memproses Pembayaran...
+                </button>
+              )
             )}
-
-            {/* Payment Method */}
-            <div className="flex items-center justify-between py-3 border-b border-slate-100">
-              <span className="text-sm text-slate-500">Metode Pembayaran</span>
-              <span className="text-sm font-semibold text-blue-600">{invoice.paymentMethod}</span>
-            </div>
 
             {/* Total Payment */}
             <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-5 py-4">
-              <span className="text-sm font-semibold text-slate-700">TOTAL PEMBAYARAN</span>
+              <span className="text-sm font-semibold text-slate-700">TOTAL TAGIHAN SAH</span>
               <div className="flex items-center gap-2">
-                <span className="text-xl font-bold text-blue-700">{formatRupiah(invoice.totalAmount)}</span>
-                <CopyButton text={String(invoice.totalAmount)} />
+                <span className="text-xl font-bold text-blue-700">{formatRupiah(order.totalAmount)}</span>
               </div>
             </div>
           </div>
@@ -352,48 +158,67 @@ function InvoiceContent({ invoiceId }: { invoiceId: string }) {
           </div>
 
           <div className="p-6">
-            <DetailRow label="Type" value="JOKI END-GAME" />
-            <DetailRow label="No Invoice" value={invoice.orderId} copyable />
-            <DetailRow label="Tgl Pemesanan" value={formatDate(invoice.createdAt)} />
+            <DetailRow label="No Invoice" value={order.id} />
+            <DetailRow label="Tgl Pemesanan" value={formatDate(order.createdAt)} />
             <DetailRow
               label="Status Transaksi"
               value={isPaid ? "PAYMENT SUCCESS" : "PENDING PAYMENT"}
               badge
               badgeColor={isPaid ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}
             />
-            <DetailRow label="Game" value="Wuthering Waves - Login" />
-            <DetailRow label="Produk" value={productName} />
-            <DetailRow label="ID Game" value={maskedGameId} />
+            <DetailRow label="Metode Pembayaran" value={order.paymentMethod || "-"} />
+            <DetailRow label="ID Game" value={`${order.loginMethod || "-"} | ${maskEmail(order.gameEmail)} | ${order.gameServer || "-"}`} />
+            
+            <div className="mt-8">
+              <h3 className="text-sm font-bold text-slate-800 mb-4 border-b pb-2">Rincian Layanan:</h3>
+              <div className="space-y-6">
+                {Object.entries(questsGrouped).map(([category, items]) => (
+                  <div key={category} className="space-y-2">
+                    <h4 className="text-xs font-bold text-slate-500 uppercase">{category}</h4>
+                    <ul className="space-y-2">
+                      {items.map((item, idx) => (
+                        <li key={idx} className="flex justify-between items-center text-sm border-l-2 border-slate-200 pl-3 py-1">
+                          <span className="text-slate-700">{item.quest.name}</span>
+                          <span className="font-medium text-slate-900">{formatRupiah(item.priceAtTimeOfOrder)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+
           </div>
         </section>
 
-        {/* ─── SIMULASI PEMBAYARAN (DEV ONLY) ─── */}
-        {!isPaid && (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-100 p-4 text-center">
-            <p className="text-xs text-slate-500 mb-2">🛠️ Development Tool — Simulasi Pembayaran</p>
-            <button
-              type="button"
-              onClick={simulatePayment}
-              className="px-6 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-500 transition-colors"
-            >
-              Simulasikan Pembayaran Berhasil
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
 }
 
-/* ─────────────────────────────────────
-   PAGE (Dynamic Route)
-   ───────────────────────────────────── */
-
-export default function InvoicePage({
-  params,
+function DetailRow({
+  label,
+  value,
+  badge = false,
+  badgeColor = "bg-slate-100 text-slate-600",
 }: {
-  params: Promise<{ id: string }>;
+  label: string;
+  value: string;
+  badge?: boolean;
+  badgeColor?: string;
 }) {
-  const { id } = use(params);
-  return <InvoiceContent invoiceId={id} />;
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-slate-100 last:border-b-0 gap-2">
+      <span className="text-sm text-slate-500 shrink-0">{label}</span>
+      <div className="text-left sm:text-right">
+        {badge ? (
+          <span className={`px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wide ${badgeColor}`}>
+            {value}
+          </span>
+        ) : (
+          <span className="text-sm font-semibold text-slate-800 break-all">{value}</span>
+        )}
+      </div>
+    </div>
+  );
 }

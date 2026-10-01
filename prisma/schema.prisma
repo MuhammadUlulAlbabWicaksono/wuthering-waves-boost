@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CategoryType {
+  MAIN
+  EXPLORATION
+  MAP_EXPLORATION
+  COMPANION
+  SIDE
+  EVENT
+}
+
+model QuestCategory {
+  id        String   @id @default(uuid())
+  name      String
+  type      CategoryType
+  quests    Quest[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Quest {
+  id             String        @id @default(uuid())
+  categoryId     String?
+  category       QuestCategory? @relation(fields: [categoryId], references: [id])
+  name           String        @unique
+  region         String        @default("")
+  isChain        Boolean       @default(false)
+  seriesName     String?
+  astriteReward  Int           @default(0)
+  flatPrice      Int?
+  priceOverride  Int?
+  isSequential   Boolean       @default(false)
+  sequenceOrder  Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  orderItems     OrderItem[]
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  totalAmount     Int
+  status          String      @default("PENDING")
+  paymentMethod   String      @default("")
+  loginMethod     String      @default("")
+  gameEmail       String      @default("")
+  gameServer      String      @default("")
+  paymentDeadline DateTime    @default(now())
+  paymentUrl      String?
+  paymentRef      String?
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+}
+
+model OrderItem {
+  id                 String   @id @default(uuid())
+  orderId            String
+  order              Order    @relation(fields: [orderId], references: [id])
+  questId            String
+  quest              Quest    @relation(fields: [questId], references: [id])
+  priceAtTimeOfOrder Int
+}
+
+

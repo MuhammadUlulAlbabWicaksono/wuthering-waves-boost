@@ -1,26 +1,40 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { ChevronDown, ChevronUp, CheckSquare, Square, Star } from "lucide-react";
+import { ChevronDown, ChevronUp, CheckSquare, Square } from "lucide-react";
 import Image from "next/image";
 import { useStickyState } from "@/hooks/useStickyState";
-import { explorationData, type AreaItem, type RegionContent } from "../data/exploration";
 
 interface ExplorationCatalogProps {
+  dbCategories: any[];
   onTotalChange?: (total: number) => void;
   onSelectionChange?: (selectedAreas: string[]) => void;
 }
 
 export default function ExplorationCatalog({
+  dbCategories,
   onTotalChange,
   onSelectionChange,
 }: ExplorationCatalogProps) {
+  const explorationData = useMemo(() => {
+    const data: Record<string, { id: string, name: string, price: number }[]> = {};
+    dbCategories.forEach((c: any) => {
+      const regionName = c.name.replace("Map Exploration 100% - ", "");
+      data[regionName] = c.quests.map((q: any) => ({
+        id: q.id,
+        name: q.name,
+        price: q.flatPrice || 0
+      }));
+    });
+    return data;
+  }, [dbCategories]);
+
   const regions = Object.keys(explorationData);
 
   // State untuk melacak accordion mana yang terbuka
   const [openRegions, setOpenRegions] = useStickyState<Set<string>>(
     new Set([regions[0]]),
-    "joki_explorationOpenRegions",
+    "joki_explorationOpenRegions_v2",
     (set) => JSON.stringify(Array.from(set)),
     (str) => new Set(JSON.parse(str))
   );
@@ -28,32 +42,13 @@ export default function ExplorationCatalog({
   // State untuk melacak area yang dipilih (menggunakan nama area)
   const [selectedAreas, setSelectedAreas] = useStickyState<Set<string>>(
     new Set(),
-    "joki_explorationSelection",
+    "joki_explorationSelection_v2",
     (set) => JSON.stringify(Array.from(set)),
     (str) => new Set(JSON.parse(str))
   );
 
-  // Helper untuk menormalisasi data area
-  const normalizeArea = (item: AreaItem) => {
-    if (typeof item === "string") {
-      return { name: item, price: 60000 };
-    }
-    return item;
-  };
-
-  // Helper untuk mendapatkan semua area dalam satu region (mendukung sub-region seperti Lahai-Roi)
-  const getRegionAreas = (regionName: string) => {
-    const content = explorationData[regionName];
-    let areas: { name: string; price: number }[] = [];
-
-    if (Array.isArray(content)) {
-      areas = content.map(normalizeArea);
-    } else {
-      Object.values(content).forEach((subArr) => {
-        areas = [...areas, ...(subArr as AreaItem[]).map(normalizeArea)];
-      });
-    }
-    return areas;
+  const getRegionAreas = (regionName: string): { id: string, name: string, price: number }[] => {
+    return explorationData[regionName] || [];
   };
 
   // Hitung total harga dengan logika diskon 10% jika memilih semua di 1 region
@@ -66,7 +61,7 @@ export default function ExplorationCatalog({
       let selectedCount = 0;
 
       areas.forEach((area) => {
-        if (selectedAreas.has(area.name)) {
+        if (selectedAreas.has(area.id)) {
           regionTotal += area.price;
           selectedCount++;
         }
@@ -100,11 +95,11 @@ export default function ExplorationCatalog({
   };
 
   // Fungsi Pilih 1 Area
-  const handleToggleArea = (areaName: string) => {
+  const handleToggleArea = (areaId: string) => {
     setSelectedAreas((prev) => {
       const next = new Set(prev);
-      if (next.has(areaName)) next.delete(areaName);
-      else next.add(areaName);
+      if (next.has(areaId)) next.delete(areaId);
+      else next.add(areaId);
       return next;
     });
   };
@@ -112,15 +107,15 @@ export default function ExplorationCatalog({
   // Fungsi Pilih Semua Area di Region tertentu
   const handleSelectAllRegion = (regionName: string) => {
     const areas = getRegionAreas(regionName);
-    const allSelected = areas.every((a) => selectedAreas.has(a.name));
+    const allSelected = areas.every((a) => selectedAreas.has(a.id));
 
     setSelectedAreas((prev) => {
       const next = new Set(prev);
       areas.forEach((a) => {
         if (allSelected) {
-          next.delete(a.name); // Deselect All
+          next.delete(a.id); // Deselect All
         } else {
-          next.add(a.name); // Select All
+          next.add(a.id); // Select All
         }
       });
       return next;
@@ -137,14 +132,14 @@ export default function ExplorationCatalog({
   };
 
   // Sub-Komponen UI untuk Kartu Area (List Item)
-  const AreaCard = ({ area }: { area: { name: string; price: number } }) => {
-    const isSelected = selectedAreas.has(area.name);
+  const AreaCard = ({ area }: { area: { id: string; name: string; price: number } }) => {
+    const isSelected = selectedAreas.has(area.id);
     const price = area.price;
 
     return (
       <button
         type="button"
-        onClick={() => handleToggleArea(area.name)}
+        onClick={() => handleToggleArea(area.id)}
         className={`group flex items-center justify-between rounded-lg border px-4 py-3 transition-all duration-200 ${isSelected
           ? "border-blue-500/50 bg-blue-900/30 text-white shadow-[0_0_10px_rgba(37,99,235,0.2)]"
           : "border-slate-700/50 bg-slate-900/40 text-slate-300 hover:border-slate-500 hover:bg-slate-800/80"
@@ -180,7 +175,7 @@ export default function ExplorationCatalog({
       {regions.map((regionName) => {
         const isOpen = openRegions.has(regionName);
         const allAreas = getRegionAreas(regionName);
-        const selectedCountInRegion = allAreas.filter((a) => selectedAreas.has(a.name)).length;
+        const selectedCountInRegion = allAreas.filter((a) => selectedAreas.has(a.id)).length;
         const isAllSelected = selectedCountInRegion === allAreas.length && allAreas.length > 0;
 
         return (
@@ -199,7 +194,7 @@ export default function ExplorationCatalog({
                   {regionName}
                 </span>
                 <span className="rounded-full bg-slate-700 px-2 py-0.5 text-xs text-slate-300 ml-2">
-                  {allAreas.length} Quests
+                  {allAreas.length} {allAreas.length > 1 ? 'Regions' : 'Region'}
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -242,24 +237,9 @@ export default function ExplorationCatalog({
 
                 {/* List Quest (Satu Kolom - Flex Col) */}
                 <div className="flex flex-col gap-2">
-                  {Array.isArray(explorationData[regionName]) ? (
-                    // Render untuk Region Normal (Huanglong, Rinascita)
-                    (explorationData[regionName] as AreaItem[]).map((item, idx) => (
-                      <AreaCard key={idx} area={normalizeArea(item)} />
-                    ))
-                  ) : (
-                    // Render untuk Region yang memiliki Sub-Region (Lahai-Roi)
-                    Object.entries(explorationData[regionName] as Record<string, AreaItem[]>).map(([subRegion, items]) => (
-                      <div key={subRegion} className="flex flex-col gap-2 mt-2">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1 mt-2">
-                          {subRegion}
-                        </span>
-                        {items.map((item, idx) => (
-                          <AreaCard key={`${subRegion}-${idx}`} area={normalizeArea(item)} />
-                        ))}
-                      </div>
-                    ))
-                  )}
+                  {allAreas.map((item, idx) => (
+                    <AreaCard key={idx} area={item} />
+                  ))}
                 </div>
 
               </div>
