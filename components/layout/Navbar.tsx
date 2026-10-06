@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 import { signIn, useSession, signOut } from "next-auth/react";
 import { 
   Menu, 
@@ -21,22 +23,25 @@ import {
 export default function Navbar() {
   const { data: session, status } = useSession();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [showManualForm, setShowManualForm] = useState(false);
   const pathname = usePathname();
+  const isLandingPage = pathname === "/";
 
-  let logoTarget = "/main"; 
+  const brandTextClass =
+    "text-xl font-bold tracking-tight text-slate-100 hidden sm:block whitespace-nowrap";
+
+  let logoTarget = "/"; 
   if (pathname === "/dashboard/planner") {
     logoTarget = "/dashboard";
   } else if (pathname === "/dashboard") {
-    logoTarget = "/main";
+    logoTarget = "/";
   }
 
   return (
     <>
       {/* ─── TASKBAR UTAMA (TOP NAVBAR) ─── */}
-      <nav className="fixed top-0 w-full z-40 bg-[#0d2745] text-white h-16 flex items-center px-4 md:px-8 justify-between shadow-md">
+      <nav className="fixed top-0 w-full z-50 backdrop-blur-md bg-slate-950/70 border-b border-slate-800/50 text-white h-16 flex items-center px-4 md:px-8 justify-between">
         {/* Kiri: Menu & Logo */}
         <div className="flex items-center gap-4">
           <button 
@@ -46,8 +51,27 @@ export default function Navbar() {
           >
             <Menu className="h-6 w-6 text-white" />
           </button>
-          <Link href={logoTarget} className="font-bold text-lg md:text-xl tracking-wide text-white hover:text-blue-300 transition-colors">
-            Wuthering Boost
+          <Link href={logoTarget} className="flex items-center gap-x-3 z-50">
+            <Image
+              src="/apiao-boost-logo.svg"
+              alt="Apiao Boost Logo"
+              width={36}
+              height={36}
+              className="object-contain shrink-0 size-9"
+              priority
+            />
+            {isLandingPage ? (
+              <motion.div
+                className={brandTextClass}
+                initial={{ clipPath: "inset(0 100% 0 0)" }}
+                animate={{ clipPath: "inset(0 0% 0 0)" }}
+                transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+              >
+                Apiao Boost
+              </motion.div>
+            ) : (
+              <span className={brandTextClass}>Apiao Boost</span>
+            )}
           </Link>
         </div>
 
@@ -72,14 +96,13 @@ export default function Navbar() {
             <Search className="h-5 w-5" />
           </button>
           
-          <button 
-            type="button" 
-            onClick={() => setIsTrackingOpen(true)}
+          <Link 
+            href="/lacak-pesanan"
             className="hidden sm:flex items-center gap-2 text-sm font-medium hover:text-blue-300 transition-colors"
           >
             <FileText className="h-4 w-4" />
             <span>Lacak Pesanan</span>
-          </button>
+          </Link>
 
           {status === "authenticated" && session?.user ? (
             <div className="flex items-center gap-3 bg-[#1a3a5f] rounded-full pl-1 pr-1.5 py-1 border border-[#2a4a6f]">
@@ -140,53 +163,25 @@ export default function Navbar() {
           </button>
         </div>
         <div className="flex flex-col gap-2 mt-6 px-4 overflow-y-auto">
-          <Link href="/dashboard" className="flex items-center gap-3 p-3 rounded-md hover:bg-blue-900 text-zinc-200 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}>
-            <Map className="h-5 w-5" /><span>Eksplorasi & Koleksi</span>
+          <Link href="/dashboard?tab=eksplorasi" className="flex items-center gap-3 p-3 rounded-md hover:bg-blue-900 text-zinc-200 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}>
+            <Map className="h-5 w-5" /><span>Eksplorasi Map</span>
           </Link>
-          <Link href="/dashboard" className="flex items-center gap-3 p-3 rounded-md hover:bg-blue-900 text-zinc-200 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}>
+          <Link href="/dashboard?tab=maintenance" className="flex items-center gap-3 p-3 rounded-md hover:bg-blue-900 text-zinc-200 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}>
             <Calendar className="h-5 w-5" /><span>Maintenance Akun</span>
           </Link>
-          <Link href="/dashboard" className="flex items-center gap-3 p-3 rounded-md hover:bg-blue-900 text-zinc-200 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}>
+          <Link href="/dashboard?tab=quest" className="flex items-center gap-3 p-3 rounded-md hover:bg-blue-900 text-zinc-200 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}>
             <BookOpen className="h-5 w-5" /><span>Penyelesaian Quest</span>
           </Link>
-          <Link href="/dashboard" className="flex items-center gap-3 p-3 rounded-md hover:bg-blue-900 text-zinc-200 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}>
-            <Hammer className="h-5 w-5" /><span>Build & Echo Farming</span>
+          <Link href="/dashboard?tab=build" className="flex items-center gap-3 p-3 rounded-md hover:bg-blue-900 text-zinc-200 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}>
+            <Hammer className="h-5 w-5" /><span>Build Karakter</span>
           </Link>
-          <Link href="/dashboard/planner" className="flex items-center gap-3 p-3 rounded-md hover:bg-blue-900 text-zinc-200 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}>
+          <Link href="/dashboard?tab=endgame" className="flex items-center gap-3 p-3 rounded-md hover:bg-blue-900 text-zinc-200 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}>
             <Trophy className="h-5 w-5" /><span>End-Game</span>
           </Link>
         </div>
       </aside>
 
-      {/* ─── MODAL: LACAK PESANAN ─── */}
-      {isTrackingOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md bg-[#0d2745] rounded-xl shadow-xl overflow-hidden flex flex-col relative">
-            <button 
-              onClick={() => setIsTrackingOpen(false)}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-white"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <div className="p-6">
-              <h2 className="text-xl font-bold text-white mb-4">Lacak Pesanan</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-1">Masukkan ID Invoice</label>
-                  <input 
-                    type="text" 
-                    placeholder="Contoh: INV-1234" 
-                    className="w-full bg-zinc-900/50 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <button className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition-colors">
-                  Lacak
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* ─── MODAL: LOGIN / SIGN UP ─── */}
       {isLoginOpen && (

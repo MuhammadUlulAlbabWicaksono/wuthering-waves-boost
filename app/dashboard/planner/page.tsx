@@ -5,6 +5,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Image from "next/image";
 import { Plus, X, User, Shield, Swords, Zap, Sparkles, Check, MousePointerClick, Skull, ShoppingCart, CreditCard, AlertTriangle, ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
+import { CHARACTERS_BY_ELEMENT, characterImage, type Sonata } from "@/lib/data/characters";
 
 /* ─────────────────────────────────────
    TYPES & DATA
@@ -50,76 +51,20 @@ const VIGOR_CONFIG: Record<Mode, { max: number; cost: number }> = {
   Hologram: { max: 10, cost: 5 },
 };
 
-const characters: Character[] = [
-  { id: "buling", name: "Buling", sonata: "Electro", rarity: 4, tier: "A" },
-  { id: "lumi", name: "Lumi", sonata: "Electro", rarity: 4, tier: "A" },
-  { id: "yuanwu", name: "Yuanwu", sonata: "Electro", rarity: 4, tier: "A" },
-  { id: "augusta", name: "Augusta", sonata: "Electro", rarity: 5, tier: "S" },
-  { id: "calcharo", name: "Calcharo", sonata: "Electro", rarity: 5, tier: "S" },
-  { id: "hsin", name: "Hsin", sonata: "Electro", rarity: 5, tier: "S" },
-  { id: "rebecca", name: "Rebecca", sonata: "Electro", rarity: 5, tier: "S" },
-  { id: "rover-electro", name: "Rover (Electro)", sonata: "Electro", rarity: 5, tier: "S" },
-  { id: "suoming", name: "Suoming", sonata: "Electro", rarity: 5, tier: "S" },
-  { id: "xiangli-yao", name: "Xiangli Yao", sonata: "Electro", rarity: 5, tier: "S" },
-  { id: "yinlin", name: "Yinlin", sonata: "Electro", rarity: 5, tier: "S" },
+// Sumber data: lib/data/characters.ts (sama dengan seed tabel Character).
+// Urutan tampilan roster Planner dipertahankan seperti sebelumnya.
+const PLANNER_ELEMENT_ORDER: Sonata[] = ["Electro", "Havoc", "Spectro", "Fusion", "Aero", "Glacio"];
 
-  { id: "danjin", name: "Danjin", sonata: "Havoc", rarity: 4, tier: "A" },
-  { id: "taoqi", name: "Taoqi", sonata: "Havoc", rarity: 4, tier: "A" },
-  { id: "camellya", name: "Camellya", sonata: "Havoc", rarity: 5, tier: "S" },
-  { id: "cantarella", name: "Cantarella", sonata: "Havoc", rarity: 5, tier: "S" },
-  { id: "chisa", name: "Chisa", sonata: "Havoc", rarity: 5, tier: "S" },
-  { id: "phrolova", name: "Phrolova", sonata: "Havoc", rarity: 5, tier: "S" },
-  { id: "roccia", name: "Roccia", sonata: "Havoc", rarity: 5, tier: "S" },
-  { id: "rover-havoc", name: "Rover (Havoc)", sonata: "Havoc", rarity: 5, tier: "S" },
-  { id: "yangyang-xuanling", name: "Yangyang Xuanling", sonata: "Havoc", rarity: 5, tier: "S" },
-
-  { id: "jinhsi", name: "Jinhsi", sonata: "Spectro", rarity: 5, tier: "S" },
-  { id: "lucy", name: "Lucy", sonata: "Spectro", rarity: 5, tier: "S" },
-  { id: "luuk-herssen", name: "Luuk Herssen", sonata: "Spectro", rarity: 5, tier: "S" },
-  { id: "lynae", name: "Lynae", sonata: "Spectro", rarity: 5, tier: "S" },
-  { id: "phoebe", name: "Phoebe", sonata: "Spectro", rarity: 5, tier: "S" },
-  { id: "rover-spectro", name: "Rover (Spectro)", sonata: "Spectro", rarity: 5, tier: "S" },
-  { id: "shorekeeper", name: "The Shorekeeper", sonata: "Spectro", rarity: 5, tier: "S" },
-  { id: "verina", name: "Verina", sonata: "Spectro", rarity: 5, tier: "S" },
-  { id: "zani", name: "Zani", sonata: "Spectro", rarity: 5, tier: "S" },
-
-  { id: "chixia", name: "Chixia", sonata: "Fusion", rarity: 4, tier: "A" },
-  { id: "mortefi", name: "Mortefi", sonata: "Fusion", rarity: 4, tier: "A" },
-  { id: "aemeath", name: "Aemeath", sonata: "Fusion", rarity: 5, tier: "S" },
-  { id: "brant", name: "Brant", sonata: "Fusion", rarity: 5, tier: "S" },
-  { id: "changli", name: "Changli", sonata: "Fusion", rarity: 5, tier: "S" },
-  { id: "denia", name: "Denia", sonata: "Fusion", rarity: 5, tier: "S" },
-  { id: "encore", name: "Encore", sonata: "Fusion", rarity: 5, tier: "S" },
-  { id: "galbrena", name: "Galbrena", sonata: "Fusion", rarity: 5, tier: "S" },
-  { id: "jingran", name: "Jingran", sonata: "Fusion", rarity: 5, tier: "S" },
-  { id: "lupa", name: "Lupa", sonata: "Fusion", rarity: 5, tier: "S" },
-  { id: "mornye", name: "Mornye", sonata: "Fusion", rarity: 5, tier: "S" },
-
-  { id: "aalto", name: "Aalto", sonata: "Aero", rarity: 4, tier: "A" },
-  { id: "yangyang", name: "Yangyang", sonata: "Aero", rarity: 4, tier: "A" },
-  { id: "cartethyia", name: "Cartethyia", sonata: "Aero", rarity: 5, tier: "S" },
-  { id: "ciaccona", name: "Ciaccona", sonata: "Aero", rarity: 5, tier: "S" },
-  { id: "iuno", name: "Iuno", sonata: "Aero", rarity: 5, tier: "S" },
-  { id: "jianxin", name: "Jianxin", sonata: "Aero", rarity: 5, tier: "S" },
-  { id: "jiyan", name: "Jiyan", sonata: "Aero", rarity: 5, tier: "S" },
-  { id: "qingxiao", name: "Qingxiao", sonata: "Aero", rarity: 5, tier: "S" },
-  { id: "qiuyuan", name: "Qiuyuan", sonata: "Aero", rarity: 5, tier: "S" },
-  { id: "rover-aero", name: "Rover (Aero)", sonata: "Aero", rarity: 5, tier: "S" },
-  { id: "sigrika", name: "Sigrika", sonata: "Aero", rarity: 5, tier: "S" },
-
-  { id: "baizhi", name: "Baizhi", sonata: "Glacio", rarity: 4, tier: "A" },
-  { id: "sanhua", name: "Sanhua", sonata: "Glacio", rarity: 4, tier: "A" },
-  { id: "youhu", name: "Youhu", sonata: "Glacio", rarity: 4, tier: "A" },
-  { id: "carlotta", name: "Carlotta", sonata: "Glacio", rarity: 5, tier: "S" },
-  { id: "hiyuki", name: "Hiyuki", sonata: "Glacio", rarity: 5, tier: "S" },
-  { id: "lingyang", name: "Lingyang", sonata: "Glacio", rarity: 5, tier: "S" },
-  { id: "lucilla", name: "Lucilla", sonata: "Glacio", rarity: 5, tier: "S" },
-  { id: "suisui", name: "Suisui", sonata: "Glacio", rarity: 5, tier: "S" },
-  { id: "zhezhi", name: "Zhezhi", sonata: "Glacio", rarity: 5, tier: "S" },
-].map(char => ({
-  ...char,
-  image: `/image/character/${char.name.toLowerCase().replace(/ /g, "-").replace(/[()]/g, "")}.webp`
-}));
+const characters: Character[] = PLANNER_ELEMENT_ORDER.flatMap((element) =>
+  CHARACTERS_BY_ELEMENT[element].map((char) => ({
+    id: char.id,
+    name: char.name,
+    sonata: element,
+    rarity: char.rarity,
+    tier: char.rarity === 5 ? "S" : "A",
+    image: characterImage(char.name),
+  })),
+);
 
 /* ─────────────────────────────────────
    BOSS DATA (Hologram Mode)

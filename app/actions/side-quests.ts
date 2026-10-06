@@ -41,7 +41,7 @@ export async function getSideQuestsGrouped(): Promise<RegionGroup[]> {
   // 1. Fetch side quests — quest yang punya region (dari CSV) bukan string kosong
   const quests = await prisma.quest.findMany({
     where: {
-      region: { not: '' },
+      category: { type: 'SIDE' },
     },
     orderBy: [
       { region: 'asc' },

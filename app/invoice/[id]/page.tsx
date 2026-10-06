@@ -68,7 +68,7 @@ export default async function InvoicePage({
   
   // Kelompokkan item berdasarkan kategori (Region / Tipe)
   const questsGrouped = order.items.reduce((acc, item) => {
-    const categoryName = item.quest.category.name;
+    const categoryName = item.quest.category?.name || item.quest.region || "Lainnya";
     if (!acc[categoryName]) acc[categoryName] = [];
     acc[categoryName].push(item);
     return acc;

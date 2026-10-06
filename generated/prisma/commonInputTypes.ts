@@ -194,6 +194,23 @@ export type IntNullableWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedIntNullableFilter<$PrismaModel>
 }
 
+export type EnumElementFilter<$PrismaModel = never> = {
+  equals?: $Enums.Element | Prisma.EnumElementFieldRefInput<$PrismaModel>
+  in?: $Enums.Element[] | Prisma.ListEnumElementFieldRefInput<$PrismaModel>
+  notIn?: $Enums.Element[] | Prisma.ListEnumElementFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumElementFilter<$PrismaModel> | $Enums.Element
+}
+
+export type EnumElementWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.Element | Prisma.EnumElementFieldRefInput<$PrismaModel>
+  in?: $Enums.Element[] | Prisma.ListEnumElementFieldRefInput<$PrismaModel>
+  notIn?: $Enums.Element[] | Prisma.ListEnumElementFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumElementWithAggregatesFilter<$PrismaModel> | $Enums.Element
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumElementFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumElementFilter<$PrismaModel>
+}
+
 export type NestedStringFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
@@ -385,6 +402,23 @@ export type NestedFloatNullableFilter<$PrismaModel = never> = {
   gt?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   gte?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   not?: Prisma.NestedFloatNullableFilter<$PrismaModel> | number | null
+}
+
+export type NestedEnumElementFilter<$PrismaModel = never> = {
+  equals?: $Enums.Element | Prisma.EnumElementFieldRefInput<$PrismaModel>
+  in?: $Enums.Element[] | Prisma.ListEnumElementFieldRefInput<$PrismaModel>
+  notIn?: $Enums.Element[] | Prisma.ListEnumElementFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumElementFilter<$PrismaModel> | $Enums.Element
+}
+
+export type NestedEnumElementWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.Element | Prisma.EnumElementFieldRefInput<$PrismaModel>
+  in?: $Enums.Element[] | Prisma.ListEnumElementFieldRefInput<$PrismaModel>
+  notIn?: $Enums.Element[] | Prisma.ListEnumElementFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumElementWithAggregatesFilter<$PrismaModel> | $Enums.Element
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumElementFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumElementFilter<$PrismaModel>
 }
 
 

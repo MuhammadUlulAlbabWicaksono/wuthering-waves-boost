@@ -37,3 +37,8 @@ export type Order = Prisma.OrderModel
  * 
  */
 export type OrderItem = Prisma.OrderItemModel
+/**
+ * Model Character
+ * Master data karakter (Resonator) — diisi via prisma/seed-characters.ts
+ */
+export type Character = Prisma.CharacterModel

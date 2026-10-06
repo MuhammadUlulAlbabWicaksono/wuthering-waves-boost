@@ -4,25 +4,30 @@ import prisma from '@/lib/prisma';
 import crypto from 'node:crypto';
 
 export async function processCheckout(payload: {
-  questIds: string[],
+  questIds?: string[],
+  buildConfig?: any,
+  totalAmount?: number,
   paymentMethod: string,
   loginMethod: string,
   gameEmail: string,
   gameServer: string
 }) {
-  const { questIds, paymentMethod, loginMethod, gameEmail, gameServer } = payload;
-  if (!questIds || questIds.length === 0) {
-    return { success: false, message: 'Tidak ada quest yang dipilih.' };
+  const { questIds, buildConfig, totalAmount: payloadTotal, paymentMethod, loginMethod, gameEmail, gameServer } = payload;
+  if ((!questIds || questIds.length === 0) && !buildConfig) {
+    return { success: false, message: 'Tidak ada quest atau layanan yang dipilih.' };
   }
 
-  // Ambil semua quest berdasarkan categoryId yang beririsan dengan questIds
-  const selectedQuests = await prisma.quest.findMany({
-    where: { id: { in: questIds } },
-    include: { category: true }
-  });
+  let selectedQuests: any[] = [];
+  if (questIds && questIds.length > 0) {
+    // Ambil semua quest berdasarkan categoryId yang beririsan dengan questIds
+    selectedQuests = await prisma.quest.findMany({
+      where: { id: { in: questIds } },
+      include: { category: true }
+    });
 
-  if (selectedQuests.length !== questIds.length) {
-    return { success: false, message: 'Terdapat quest yang tidak valid.' };
+    if (selectedQuests.length !== questIds.length) {
+      return { success: false, message: 'Terdapat quest yang tidak valid.' };
+    }
   }
 
   // Kumpulkan kategori ID yang terpengaruh
@@ -48,17 +53,7 @@ export async function processCheckout(payload: {
     const discountMultiplier = isFullCategorySelected ? 0.9 : 1;
 
     for (const quest of selectedInCategory) {
-      let basePrice = 0;
-      
-      if (category.type === 'MAIN') {
-        basePrice = quest.astriteReward > 0 ? quest.astriteReward * 250 : (quest.flatPrice || 0);
-      } else if (category.type === 'COMPANION') {
-        basePrice = quest.flatPrice || 0;
-      } else if (category.type === 'EXPLORATION') {
-        basePrice = quest.astriteReward * 200;
-      } else if (category.type === 'MAP_EXPLORATION') {
-        basePrice = quest.flatPrice || 0;
-      }
+      const basePrice = quest.flatPrice || 0;
 
       const discountedPrice = Math.round(basePrice * discountMultiplier);
       categoryTotal += discountedPrice;
@@ -70,6 +65,10 @@ export async function processCheckout(payload: {
     }
 
     totalAmount += categoryTotal;
+  }
+
+  if (buildConfig && payloadTotal) {
+    totalAmount += payloadTotal;
   }
 
   // Buat Order di Database
@@ -84,9 +83,11 @@ export async function processCheckout(payload: {
       gameEmail,
       gameServer,
       paymentDeadline,
-      items: {
-        create: orderItemsData
-      }
+      ...(orderItemsData.length > 0 && {
+        items: {
+          create: orderItemsData
+        }
+      })
     }
   });
 

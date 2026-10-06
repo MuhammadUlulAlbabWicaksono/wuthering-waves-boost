@@ -67,4 +67,25 @@ model OrderItem {
   priceAtTimeOfOrder Int
 }
 
+/// Sonata utama / elemen Resonator
+enum Element {
+  Aero
+  Electro
+  Fusion
+  Glacio
+  Havoc
+  Spectro
+}
+
+/// Master data karakter (Resonator) — diisi via prisma/seed-characters.ts
+model Character {
+  id        String   @id // slug, contoh: "rover-havoc"
+  name      String   @unique
+  element   Element
+  rarity    Int      @default(5)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([element])
+}
 

@@ -5,10 +5,8 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Star, ShoppingBag, User, ChevronRight, CreditCard, ShoppingCart, AlertTriangle, ChevronDown, X } from "lucide-react";
 import Image from "next/image";
 import toast from "react-hot-toast";
-import MainQuestCatalog from "@/components/MainQuestCatalog";
-import CompanionQuestCatalog from "@/components/CompanionQuestCatalog";
-import ExplorationCatalog from "@/components/ExplorationCatalog";
-import ExplorationQuestCatalog from "@/components/QuestCatalog";
+import QuestCatalogUI from "@/components/QuestCatalogUI";
+import BuildCatalog, { type BuildProduct, type ResonatorOption } from "@/components/BuildCatalog";
 import { useStickyState } from "@/hooks/useStickyState";
 import { processCheckout } from "@/app/actions/checkout";
 
@@ -48,10 +46,24 @@ const explorationData: Quest[] = [
   { id: "e4", chapter: "Region: Rinascita", title: "All Viewpoints Rinascita", price: 30000, imageUrl: "/images/quest-placeholder.webp" },
 ];
 
-const categories = ["Eksplorasi", "Quest", "Maintenance", "End-Game"] as const;
+const categories = ["Eksplorasi Map", "Quest", "Maintenance", "Build Karakter", "End-Game"] as const;
 type Category = (typeof categories)[number];
 
-const questTypes = ['Main Quest', 'Exploration Quest', 'Companion Quest', 'Event Quest', 'Side Quest', 'World Side Quest'];
+/** Slug yang dipakai di URL (?tab=...). Harus sama dengan href di Navbar. */
+const CATEGORY_SLUG: Record<Category, string> = {
+  "Eksplorasi Map": "eksplorasi",
+  Quest: "quest",
+  Maintenance: "maintenance",
+  "Build Karakter": "build",
+  "End-Game": "endgame",
+};
+
+function categoryFromSlug(slug: string | null): Category {
+  const s = slug?.toLowerCase().replace(/-/g, ""); // terima juga slug lama "end-game"
+  return categories.find((c) => CATEGORY_SLUG[c] === s) ?? "Eksplorasi Map";
+}
+
+const questTypes = ['Main Quest', 'Exploration Quest', 'Companion Quest', 'Side Quest'];
 
 const PAYMENT_METHODS = ["QRIS", "E-Wallet", "Virtual Account", "Transfer Bank"] as const;
 type PaymentMethod = (typeof PAYMENT_METHODS)[number];
@@ -220,19 +232,24 @@ function PlaceholderContent({ category }: { category: string }) {
    MAIN PAGE
    ───────────────────────────────────── */
 
-function DashboardContent({ dbCategories }: { dbCategories: any[] }) {
+function DashboardContent({ dbCategories, dbCharacters }: { dbCategories: any[]; dbCharacters: ResonatorOption[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
   /* ── Product State ── */
   const tabParam = searchParams.get("tab");
-  const initialCategory = categories.find(
-    (c) => c.toLowerCase() === tabParam?.toLowerCase()
-  ) || "Eksplorasi";
-
-  const [activeCategory, setActiveCategory] = useState<Category>(initialCategory as Category);
+  const [activeCategory, setActiveCategory] = useState<Category>(() => categoryFromSlug(tabParam));
   const [genericProduct, setGenericProduct] = useState<SelectedProduct | null>(null);
+  const [buildProduct, setBuildProduct] = useState<BuildProduct | null>(null);
+
+  // Sinkronkan tab dengan URL agar link sidebar (/dashboard?tab=...) bekerja
+  // walau pengguna sudah berada di /dashboard.
+  useEffect(() => {
+    const cat = categoryFromSlug(tabParam);
+    setActiveCategory(cat);
+    if (cat === "End-Game") router.replace("/dashboard/planner");
+  }, [tabParam, router]);
 
   /* ── Quest State ── */
   const [selectedQuestType, setSelectedQuestType] = useStickyState<string>("", "joki_selectedQuestType");
@@ -245,37 +262,34 @@ function DashboardContent({ dbCategories }: { dbCategories: any[] }) {
 
   /* ── Global Product State ── */
   const selectedProduct = useMemo<SelectedProduct | null>(() => {
-    const globalTotal = questTotal + explorationTotal;
-    
-    if (globalTotal === 0) return genericProduct;
-
-    let productName = "";
-    let mode = "";
-
-    const uniqueQuestCount = Array.from(new Set(questSelectedIds)).filter(id => id.trim() !== '').length;
-    const uniqueExplorationCount = Array.from(new Set(explorationSelectedAreas)).filter(id => id.trim() !== '').length;
-
-    if (questTotal > 0 && explorationTotal > 0) {
-      productName = "Multiple Services (Quest, Eksplorasi)";
-      mode = "Multiple";
-    } else if (explorationTotal > 0) {
-      productName = `Eksplorasi (${uniqueExplorationCount} Area)`;
-      mode = "Eksplorasi";
-    } else if (questTotal > 0) {
-      productName = `Joki ${selectedQuestType || 'Quest'} (${uniqueQuestCount} Quest)`;
-      mode = "Quest";
+    if (activeCategory === "Build Karakter") {
+      return buildProduct as SelectedProduct | null;
     }
 
-    return {
-      name: productName,
-      price: globalTotal,
-      category: mode,
-      details: {
-        ...(questSelectedIds.length > 0 && { selectedIds: questSelectedIds }),
-        ...(explorationSelectedAreas.length > 0 && { selectedAreas: explorationSelectedAreas }),
-      }
-    };
-  }, [questTotal, explorationTotal, questSelectedIds, explorationSelectedAreas, selectedQuestType, genericProduct]);
+    if (activeCategory === "Eksplorasi Map") {
+      if (explorationTotal === 0) return genericProduct;
+      const uniqueExplorationCount = Array.from(new Set(explorationSelectedAreas)).filter(id => id.trim() !== '').length;
+      return {
+        name: `Eksplorasi (${uniqueExplorationCount} Area)`,
+        price: explorationTotal,
+        category: "Eksplorasi",
+        details: { selectedAreas: explorationSelectedAreas }
+      };
+    }
+
+    if (activeCategory === "Quest") {
+      if (questTotal === 0) return genericProduct;
+      const uniqueQuestCount = Array.from(new Set(questSelectedIds)).filter(id => id.trim() !== '').length;
+      return {
+        name: `Joki ${selectedQuestType || 'Quest'} (${uniqueQuestCount} Quest)`,
+        price: questTotal,
+        category: "Quest",
+        details: { selectedIds: questSelectedIds }
+      };
+    }
+
+    return genericProduct;
+  }, [activeCategory, questTotal, explorationTotal, questSelectedIds, explorationSelectedAreas, selectedQuestType, genericProduct, buildProduct]);
 
   /* ── Form State ── */
   const [loginMethod, setLoginMethod] = useStickyState("Kuro Games", "joki_loginMethod");
@@ -291,11 +305,7 @@ function DashboardContent({ dbCategories }: { dbCategories: any[] }) {
 
   const handleCategoryChange = (cat: Category) => {
     setActiveCategory(cat);
-    router.replace(`${pathname}?tab=${cat.toLowerCase()}`, { scroll: false });
-
-    if (cat === "End-Game") {
-      router.push("/dashboard/planner");
-    }
+    router.replace(`${pathname}?tab=${CATEGORY_SLUG[cat]}`, { scroll: false });
   };
 
   const handleSelectProduct = (product: SelectedProduct) => {
@@ -306,17 +316,31 @@ function DashboardContent({ dbCategories }: { dbCategories: any[] }) {
 
   const handleConfirmPurchase = useCallback(async () => {
     if (!selectedProduct) return;
-
+    
     setIsSubmitting(true);
     try {
-      const allQuestIds = Array.from(new Set([
-        ...(selectedProduct.details?.selectedIds || []),
-        ...(selectedProduct.details?.selectedAreas || []),
-      ])).filter(id => typeof id === 'string' && id.trim() !== '');
+      const payload: any = {
+        paymentMethod,
+        loginMethod,
+        gameEmail: accountEmail,
+        gameServer: server
+      };
 
-      if (allQuestIds.length === 0) {
-        toast.error("Tidak ada item yang dapat dicheckout.");
-        return;
+      if (activeCategory === "Build Karakter") {
+        payload.buildConfig = selectedProduct.details;
+        payload.totalAmount = selectedProduct.price;
+      } else {
+        const allQuestIds = Array.from(new Set([
+          ...(selectedProduct.details?.selectedIds || []),
+          ...(selectedProduct.details?.selectedAreas || []),
+        ])).filter(id => typeof id === 'string' && id.trim() !== '');
+
+        if (allQuestIds.length === 0) {
+          toast.error("Tidak ada item yang dapat dicheckout.");
+          setIsSubmitting(false);
+          return;
+        }
+        payload.questIds = allQuestIds;
       }
 
       if (!loginMethod || !accountEmail || !server || !paymentMethod) {
@@ -325,13 +349,7 @@ function DashboardContent({ dbCategories }: { dbCategories: any[] }) {
         return;
       }
 
-      const res = await processCheckout({
-        questIds: allQuestIds,
-        paymentMethod,
-        loginMethod,
-        gameEmail: accountEmail,
-        gameServer: server
-      });
+      const res = await processCheckout(payload);
       
       if (res.success) {
         toast.success(`Berhasil! ID Pesanan: ${res.orderId} | Total Tagihan Sah: ${formatRupiah(res.calculatedTotal || 0)}`);
@@ -377,7 +395,7 @@ function DashboardContent({ dbCategories }: { dbCategories: any[] }) {
                 {/* Layer 1: Pilih Jenis Quest */}
                 <div>
                   <h3 className="text-lg font-bold text-white mb-4">Pilih Jenis Quest</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {questTypes.map((type) => (
                       <button
                         key={type}
@@ -401,20 +419,34 @@ function DashboardContent({ dbCategories }: { dbCategories: any[] }) {
                       Katalog {selectedQuestType}
                     </h3>
                     {selectedQuestType === 'Main Quest' ? (
-                      <MainQuestCatalog
+                      <QuestCatalogUI
+                        key="mainQuest"
                         dbCategories={dbCategories.filter((c: any) => c.type === 'MAIN')}
+                        storageKeyPrefix="mainQuest"
                         onTotalChange={setQuestTotal}
                         onSelectionChange={setQuestSelectedIds}
                       />
                     ) : selectedQuestType === 'Exploration Quest' ? (
-                      <ExplorationQuestCatalog
+                      <QuestCatalogUI
+                        key="explorationQuest"
                         dbCategories={dbCategories.filter((c: any) => c.type === 'EXPLORATION')}
+                        storageKeyPrefix="explorationQuest"
                         onTotalChange={setQuestTotal}
                         onSelectionChange={setQuestSelectedIds}
                       />
                     ) : selectedQuestType === 'Companion Quest' ? (
-                      <CompanionQuestCatalog
+                      <QuestCatalogUI
+                        key="companionQuest"
                         dbCategories={dbCategories.filter((c: any) => c.type === 'COMPANION')}
+                        storageKeyPrefix="companionQuest"
+                        onTotalChange={setQuestTotal}
+                        onSelectionChange={setQuestSelectedIds}
+                      />
+                    ) : selectedQuestType === 'Side Quest' ? (
+                      <QuestCatalogUI
+                        key="sideQuest"
+                        dbCategories={dbCategories.filter((c: any) => c.type === 'SIDE')}
+                        storageKeyPrefix="sideQuest"
                         onTotalChange={setQuestTotal}
                         onSelectionChange={setQuestSelectedIds}
                       />
@@ -427,9 +459,13 @@ function DashboardContent({ dbCategories }: { dbCategories: any[] }) {
                   </div>
                 )}
               </div>
-            ) : activeCategory === "Eksplorasi" ? (
-              <ExplorationCatalog
+            ) : activeCategory === "Build Karakter" ? (
+              <BuildCatalog characters={dbCharacters} onProductChange={setBuildProduct} />
+            ) : activeCategory === "Eksplorasi Map" ? (
+              <QuestCatalogUI
+                key="mapExploration"
                 dbCategories={dbCategories.filter((c: any) => c.type === 'MAP_EXPLORATION')}
+                storageKeyPrefix="mapExploration"
                 onTotalChange={setExplorationTotal}
                 onSelectionChange={setExplorationSelectedAreas}
               />
@@ -650,14 +686,14 @@ function DashboardContent({ dbCategories }: { dbCategories: any[] }) {
   );
 }
 
-export default function DashboardClient({ dbCategories }: { dbCategories: any[] }) {
+export default function DashboardClient({ dbCategories, dbCharacters }: { dbCategories: any[]; dbCharacters: ResonatorOption[] }) {
   return (
     <Suspense fallback={
       <div className="flex min-h-screen items-center justify-center bg-slate-900 text-white">
         Loading...
       </div>
     }>
-      <DashboardContent dbCategories={dbCategories} />
+      <DashboardContent dbCategories={dbCategories} dbCharacters={dbCharacters} />
     </Suspense>
   );
 }

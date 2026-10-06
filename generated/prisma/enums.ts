@@ -19,3 +19,15 @@ export const CategoryType = {
 } as const
 
 export type CategoryType = (typeof CategoryType)[keyof typeof CategoryType]
+
+
+export const Element = {
+  Aero: 'Aero',
+  Electro: 'Electro',
+  Fusion: 'Fusion',
+  Glacio: 'Glacio',
+  Havoc: 'Havoc',
+  Spectro: 'Spectro'
+} as const
+
+export type Element = (typeof Element)[keyof typeof Element]
